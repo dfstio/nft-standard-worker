@@ -1,0 +1,38 @@
+{
+  "name": "nft-standard-worker",
+  "version": "0.1.0",
+  "author": "DFST",
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "NODE_NO_WARNINGS=1 node --loader=ts-node/esm --enable-source-maps -r dotenv/config --require dotenv/config --env-file=.env --test",
+    "compile:devnet": "yarn test test/compile-devnet.test.ts",
+    "compile:mainnet": "yarn test test/compile-mainnet.test.ts",
+    "local": "CHAIN=local CLOUD=local WHITELIST=false yarn test test/contract.test.ts",
+    "local:whitelist": "CHAIN=local CLOUD=local WHITELIST=true yarn test test/contract.test.ts",
+    "devnet": "CHAIN=devnet CLOUD=local WHITELIST=false yarn test test/contract.test.ts",
+    "devnet:whitelist": "CHAIN=local CLOUD=local WHITELIST=true yarn test test/contract.test.ts",
+    "zeko": "CHAIN=zeko CLOUD=local WHITELIST=false yarn test test/contract.test.ts",
+    "zeko:whitelist": "CHAIN=zeko CLOUD=local WHITELIST=true yarn test test/contract.test.ts"
+  },
+  "node": {
+    "version": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "dotenv": "^16.4.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "yarn@4.5.3",
+  "dependencies": {
+    "@minatokens/api": "^0.12.7",
+    "@minatokens/nft": "^0.12.7",
+    "@minatokens/storage": "^0.12.7",
+    "@minatokens/upgradable": "^0.12.7",
+    "algoliasearch": "^5.18.0",
+    "o1js": "2.2.0",
+    "unique-names-generator": "^4.7.1",
+    "zkcloudworker": "^0.23.3"
+  }
+}
