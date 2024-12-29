@@ -52,6 +52,8 @@ import {
   NFTAddress,
   Bid,
   NFTAdvancedAdmin,
+  NFTOraclePreconditions,
+  UInt64Option,
 } from "@minatokens/nft";
 import {
   VerificationKeyUpgradeAuthority,
@@ -975,6 +977,7 @@ describe("NFT contracts tests", () => {
       creator: creator,
       address: zkNFTKey,
       tokenId,
+      oracle: NFTOraclePreconditions.new(),
     });
 
     const index = nftParams.findIndex(
@@ -1157,9 +1160,17 @@ describe("NFT contracts tests", () => {
         },
         async () => {
           if (!requireTransferApproval) {
-            await collectionContract.transferWithApproval(zkNFTKey, to);
+            await collectionContract.transferNFTWithApproval(
+              zkNFTKey,
+              to,
+              UInt64Option.none()
+            );
           } else {
-            await collectionContract.transfer(zkNFTKey, to);
+            await collectionContract.transferNFT(
+              zkNFTKey,
+              to,
+              UInt64Option.none()
+            );
           }
         }
       );
@@ -1186,9 +1197,17 @@ describe("NFT contracts tests", () => {
       },
       async () => {
         if (requireTransferApproval) {
-          await collectionContract.transferWithApproval(zkNFTKey, to);
+          await collectionContract.transferNFTWithApproval(
+            zkNFTKey,
+            to,
+            UInt64Option.none()
+          );
         } else {
-          await collectionContract.transfer(zkNFTKey, to);
+          await collectionContract.transferNFT(
+            zkNFTKey,
+            to,
+            UInt64Option.none()
+          );
         }
       }
     );
@@ -1277,9 +1296,17 @@ describe("NFT contracts tests", () => {
         },
         async () => {
           if (requireTransferApproval) {
-            await collectionContract.transferWithApproval(zkNFTKey, to);
+            await collectionContract.transferNFTWithApproval(
+              zkNFTKey,
+              to,
+              UInt64Option.none()
+            );
           } else {
-            await collectionContract.transfer(zkNFTKey, to);
+            await collectionContract.transferNFT(
+              zkNFTKey,
+              to,
+              UInt64Option.none()
+            );
           }
         }
       );
@@ -1369,9 +1396,17 @@ describe("NFT contracts tests", () => {
       },
       async () => {
         if (requireTransferApproval) {
-          await collectionContract.transferWithApproval(zkNFTKey, to);
+          await collectionContract.transferNFTWithApproval(
+            zkNFTKey,
+            to,
+            UInt64Option.none()
+          );
         } else {
-          await collectionContract.transfer(zkNFTKey, to);
+          await collectionContract.transferNFT(
+            zkNFTKey,
+            to,
+            UInt64Option.none()
+          );
         }
       }
     );
@@ -1450,9 +1485,17 @@ describe("NFT contracts tests", () => {
         },
         async () => {
           if (requireTransferApproval) {
-            await collectionContract.transferWithApproval(zkNFTKey, to);
+            await collectionContract.transferNFTWithApproval(
+              zkNFTKey,
+              to,
+              UInt64Option.none()
+            );
           } else {
-            await collectionContract.transfer(zkNFTKey, to);
+            await collectionContract.transferNFT(
+              zkNFTKey,
+              to,
+              UInt64Option.none()
+            );
           }
         }
       );
@@ -1828,9 +1871,17 @@ describe("NFT contracts tests", () => {
       },
       async () => {
         if (requireTransferApproval) {
-          await collectionContract.transferWithApproval(zkNFTKey, to);
+          await collectionContract.transferNFTWithApproval(
+            zkNFTKey,
+            to,
+            UInt64Option.none()
+          );
         } else {
-          await collectionContract.transfer(zkNFTKey, to);
+          await collectionContract.transferNFT(
+            zkNFTKey,
+            to,
+            UInt64Option.none()
+          );
         }
       }
     );

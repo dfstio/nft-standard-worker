@@ -187,12 +187,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@minatokens/api@npm:^0.12.7":
-  version: 0.12.7
-  resolution: "@minatokens/api@npm:0.12.7"
+"@minatokens/api@npm:^0.12.8":
+  version: 0.12.8
+  resolution: "@minatokens/api@npm:0.12.8"
   dependencies:
     "@hey-api/client-fetch": "npm:^0.5.6"
-  checksum: 10c0/e660ce7af1c27800600f78bfb28982ffe713510ce5cc8c24fdc24ffd4adfd209f037e536663180ab3b1403cbeabbbba38ec47383d3acfbb0f620b959b5570356
+  checksum: 10c0/442a7a792e8de79459818f4a8d9191feb025e1cb5d5e6e5caf07a824eba9cd291854df6cd9b10a13a40ed9a277f18399dae29d8880b04149212567519a16acb5
   languageName: node
   linkType: hard
 
@@ -205,41 +205,41 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@minatokens/nft@npm:^0.12.7":
-  version: 0.12.7
-  resolution: "@minatokens/nft@npm:0.12.7"
+"@minatokens/nft@npm:^0.12.8":
+  version: 0.12.8
+  resolution: "@minatokens/nft@npm:0.12.8"
   dependencies:
     mina-signer: "npm:^3.0.7"
     tslib: "npm:^2.8.1"
   peerDependencies:
-    "@minatokens/storage": 0.12.7
-    "@minatokens/upgradable": 0.12.7
+    "@minatokens/storage": 0.12.8
+    "@minatokens/upgradable": 0.12.8
     o1js: ^2.2.0
-  checksum: 10c0/cf1340ecb7da6fecf613a919f759b81d54df2f26f0409894a066a66247902178bc0a4d8ae392cee38ef840d6d85d95a54c735bdbecfa91349ac07049d3822553
+  checksum: 10c0/e60ca259d131320fcd8510de7f4f23a84208d4bc4985a588d2ee85d9cffda1d71dbcb91d857e552b6c69658f88c9a6bbc98ada22b65c4e702a05ac57b8ab0c3c
   languageName: node
   linkType: hard
 
-"@minatokens/storage@npm:^0.12.7":
-  version: 0.12.7
-  resolution: "@minatokens/storage@npm:0.12.7"
+"@minatokens/storage@npm:^0.12.8":
+  version: 0.12.8
+  resolution: "@minatokens/storage@npm:0.12.8"
   dependencies:
     tslib: "npm:^2.8.1"
   peerDependencies:
     o1js: ^2.2.0
-  checksum: 10c0/88f49da4a972baeed5eb64760a023cd84247687eee0aa6571b21f9ec6fdc4e63c513b3363bd3e82a7bb00f2a0d54f9b2fd1fbb472f54c250a798f1970fbe325e
+  checksum: 10c0/a9cb32110dec257dcd53fcc2d798f50eae8790bfb088ef22c5a84a29e950c1413ad80e1e4a1395e2ddb126d9e433602353ec1e10facfb27de33288fdc3c831a1
   languageName: node
   linkType: hard
 
-"@minatokens/upgradable@npm:^0.12.7":
-  version: 0.12.7
-  resolution: "@minatokens/upgradable@npm:0.12.7"
+"@minatokens/upgradable@npm:^0.12.8":
+  version: 0.12.8
+  resolution: "@minatokens/upgradable@npm:0.12.8"
   dependencies:
     mina-signer: "npm:^3.0.7"
     tslib: "npm:^2.8.1"
   peerDependencies:
-    "@minatokens/storage": 0.12.7
+    "@minatokens/storage": 0.12.8
     o1js: ^2.2.0
-  checksum: 10c0/a6d3a1b69f6728efe58e41a1636580d72fab4e466402d9e9a286564979679f4978e36ed745d35b88bdb5a83d650d84bb5c2994548d751d29f5bdabec89723eb7
+  checksum: 10c0/6190b78fbc515d12dadd88f6b8d54fd08c755d958bf77be6777bc5423253d4403299c33e4980dce65226ba822f7eb7b9601dddc39ecf5b0bf37760089e4caceb
   languageName: node
   linkType: hard
 
@@ -441,10 +441,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "nft-standard-worker@workspace:."
   dependencies:
-    "@minatokens/api": "npm:^0.12.7"
-    "@minatokens/nft": "npm:^0.12.7"
-    "@minatokens/storage": "npm:^0.12.7"
-    "@minatokens/upgradable": "npm:^0.12.7"
+    "@minatokens/api": "npm:^0.12.8"
+    "@minatokens/nft": "npm:^0.12.8"
+    "@minatokens/storage": "npm:^0.12.8"
+    "@minatokens/upgradable": "npm:^0.12.8"
     "@types/node": "npm:^22.10.2"
     algoliasearch: "npm:^5.18.0"
     dotenv: "npm:^16.4.7"
