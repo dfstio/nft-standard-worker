@@ -3,11 +3,11 @@ import { blockchain } from "zkcloudworker";
 export function processArguments(): {
   chain: blockchain;
   proofsEnabled: boolean;
-  useWhitelistedAdmin: boolean;
+  useAdvancedAdmin: boolean;
 } {
   const chainName = process.env.CHAIN ?? "local";
   const proofs = process.env.PROOFS ?? "true";
-  const useWhitelistedAdmin = process.env.WHITELIST ?? "false";
+  const useAdvancedAdmin = process.env.ADVANCED ?? "false";
   if (
     chainName !== "local" &&
     chainName !== "devnet" &&
@@ -19,6 +19,6 @@ export function processArguments(): {
   return {
     chain: chainName as blockchain,
     proofsEnabled: proofs === "true",
-    useWhitelistedAdmin: useWhitelistedAdmin === "true",
+    useAdvancedAdmin: useAdvancedAdmin === "true",
   };
 }
