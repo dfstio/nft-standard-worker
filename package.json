@@ -6,14 +6,12 @@
   "license": "Apache-2.0",
   "scripts": {
     "test": "NODE_NO_WARNINGS=1 node --loader=ts-node/esm --enable-source-maps -r dotenv/config --require dotenv/config --env-file=.env --test",
-    "compile:devnet": "yarn test test/compile-devnet.test.ts",
-    "compile:mainnet": "yarn test test/compile-mainnet.test.ts",
-    "local": "CHAIN=local CLOUD=local WHITELIST=false yarn test test/contract.test.ts",
-    "local:whitelist": "CHAIN=local CLOUD=local WHITELIST=true yarn test test/contract.test.ts",
-    "devnet": "CHAIN=devnet CLOUD=local WHITELIST=false yarn test test/contract.test.ts",
-    "devnet:whitelist": "CHAIN=local CLOUD=local WHITELIST=true yarn test test/contract.test.ts",
-    "zeko": "CHAIN=zeko CLOUD=local WHITELIST=false yarn test test/contract.test.ts",
-    "zeko:whitelist": "CHAIN=zeko CLOUD=local WHITELIST=true yarn test test/contract.test.ts"
+    "local": "CHAIN=local CLOUD=local ADVANCED=false yarn test test/contract.test.ts",
+    "local:advanced": "CHAIN=local CLOUD=local ADVANCED=true yarn test test/contract.test.ts",
+    "devnet": "CHAIN=devnet CLOUD=local ADVANCED=false yarn test test/contract.test.ts",
+    "devnet:advanced": "CHAIN=local CLOUD=local ADVANCED=true yarn test test/contract.test.ts",
+    "zeko": "CHAIN=zeko CLOUD=local ADVANCED=false yarn test test/contract.test.ts",
+    "zeko:advanced": "CHAIN=zeko CLOUD=local ADVANCED=true yarn test test/contract.test.ts"
   },
   "node": {
     "version": ">=20.0.0"
@@ -26,10 +24,10 @@
   },
   "packageManager": "yarn@4.5.3",
   "dependencies": {
-    "@minatokens/api": "^0.12.8",
-    "@minatokens/nft": "^0.12.8",
-    "@minatokens/storage": "^0.12.8",
-    "@minatokens/upgradable": "^0.12.8",
+    "@minatokens/api": "^0.14.0",
+    "@minatokens/nft": "file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=0e03d5&locator=nft-standard-worker%40workspace%3A.",
+    "@minatokens/storage": "^0.14.0",
+    "@minatokens/upgradable": "^0.14.0",
     "algoliasearch": "^5.18.0",
     "o1js": "2.2.0",
     "unique-names-generator": "^4.7.1",

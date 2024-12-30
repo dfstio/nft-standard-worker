@@ -3,9 +3,9 @@
     "rootDir": "./",
     "outDir": "dist",
     "baseUrl": ".", // affects where output files end up
-    "target": "es2021", // goal: ship *the most modern syntax* that is supported by *all* browsers that support our Wasm
-    "module": "nodenext", // allow top-level await
-    "moduleResolution": "nodenext", // comply with node + "type": "module"
+    "target": "ESNext", // goal: ship *the most modern syntax* that is supported by *all* browsers that support our Wasm
+    "module": "NodeNext", // allow top-level await
+    "moduleResolution": "NodeNext", // comply with node + "type": "module"
     "esModuleInterop": true, // to silence jest
 
     "experimentalDecorators": true, // needed for decorators
@@ -16,13 +16,16 @@
     "strictPropertyInitialization": false, // to enable generic constructors, e.g. on CircuitValue
     "importHelpers": true, // reduces size
     "declaration": true, // declaration files are how library consumers get our types
-    "noEmitOnError": false, // avoid accidentally shipping with type errors
-    "allowJs": true, // to use JSDoc in some places where TS would be too cumbersome
+    "noEmitOnError": true, // avoid accidentally shipping with type errors
     "sourceMap": true,
-    "resolveJsonModule": true,
     "skipLibCheck": true,
-    "allowSyntheticDefaultImports": true
+    "preserveSymlinks": true
   },
   "include": ["**/*.ts", "package.json"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist"],
+  "ts-node": {
+    "experimentalSpecifierResolution": "node",
+    "transpileOnly": true,
+    "esm": true
+  }
 }

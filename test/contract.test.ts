@@ -1,4 +1,4 @@
-// This test will run out of memory first time, please run it again with prover keys cache created
+// This test can run out of memory first time, please run it again with prover keys cache created
 import { describe, it } from "node:test";
 import assert from "node:assert";
 import {
@@ -12,7 +12,6 @@ import {
   UInt64,
   fetchLastBlock,
   PublicKey,
-  UInt8,
   Signature,
   Poseidon,
   verify,
@@ -23,19 +22,15 @@ import {
   initBlockchain,
   accountBalanceMina,
   Memory,
-  blockchain,
   serializeIndexedMap,
-  createIpfsURL,
-  loadIndexedMerkleMap,
   sendTx,
   pinJSON,
 } from "zkcloudworker";
 import { TEST_ACCOUNTS } from "../config.js";
 import {
   NFT,
-  Collection,
   NFTAdmin,
-  NFTAdvancedAdminContract,
+  NFTAdvancedAdmin,
   CollectionData,
   fieldFromString,
   NFTData,
@@ -46,14 +41,19 @@ import {
   MintParams,
   NFTProgram,
   nftVerificationKeys,
-  MetadataFieldTypeValues,
   Metadata,
-  NonFungibleTokenBidContract,
+  BidFactory,
   NFTAddress,
   Bid,
-  NFTAdvancedAdmin,
   NFTOraclePreconditions,
   UInt64Option,
+  OfferFactory,
+  AdminData,
+  NonFungibleTokenContractsFactory,
+  NFTStandardOwner,
+  DefineApprovalFactory,
+  NFTCollectionContractConstructor,
+  NFTAdminContractConstructor,
 } from "@minatokens/nft";
 import {
   VerificationKeyUpgradeAuthority,
@@ -67,7 +67,6 @@ import {
   UpgradeAuthorityDatabase,
   ValidatorsDecision,
   ValidatorDecisionType,
-  ValidatorsVotingNativeProof,
   ValidatorsDecisionState,
   ValidatorsVotingProof,
   VerificationKeyUpgradeData,
@@ -79,7 +78,7 @@ import { randomMetadata } from "./helpers/metadata.js";
 import { Whitelist, Storage, OffChainList } from "@minatokens/storage";
 import fs from "fs/promises";
 
-let { chain, useWhitelistedAdmin, proofsEnabled } = processArguments();
+let { chain, useAdvancedAdmin, proofsEnabled } = processArguments();
 const networkId = chain === "mainnet" ? "mainnet" : "devnet";
 const expectedTxStatus = chain === "zeko" ? "pending" : "included";
 const vk = nftVerificationKeys[networkId].vk;
@@ -91,39 +90,48 @@ let nftContractVk: VerificationKey;
 let nftProgramVk: VerificationKey;
 let collectionVk: VerificationKey;
 let adminVk: VerificationKey;
-let whitelistedAdminVk: VerificationKey;
+let AdvancedAdminVk: VerificationKey;
 let upgradeAuthorityVk: VerificationKey;
 let validatorsVotingVk: VerificationKey;
+let offerVk: VerificationKey;
 const cache: Cache = Cache.FileSystem("./cache");
 const zkNFTKey = TestPublicKey.random();
 const zkCollectionKey = TestPublicKey.random();
 const zkAdminKey = TestPublicKey.random();
 const zkBidKey = TestPublicKey.random();
+const zkOfferKey = TestPublicKey.random();
 const upgradeAuthority = TestPublicKey.random();
 const upgradeAuthorityContract = new VerificationKeyUpgradeAuthority(
   upgradeAuthority
 );
-// const AdminContract = AdminContractContract({
-//   upgradeContract: VerificationKeyUpgradeAuthority,
-// });
-// const WhitelistedAdminContract = WhitelistedAdminContractContract({
-//   upgradeContract: VerificationKeyUpgradeAuthority,
-// });
-// const Collection = CollectionContract({
-//   //  adminContract: useWhitelistedAdmin ? WhitelistedAdminContract : AdminContract,
-//   adminContract: useWhitelistedAdmin ? WhitelistedAdminContract : AdminContract,
-//   upgradeContract: VerificationKeyUpgradeAuthority,
-//   networkId: networkId,
-// });
 
+// https://github.com/o1-labs/o1js/issues/1317 - issue with #private in SmartContract
+// is being fixed by using unknown as ...
+const { Collection, Approval, Owner, Admin } = NonFungibleTokenContractsFactory(
+  {
+    approvalFactory: OfferFactory as unknown as DefineApprovalFactory,
+    adminContract: useAdvancedAdmin
+      ? (NFTAdvancedAdmin as unknown as NFTAdminContractConstructor)
+      : NFTAdmin,
+  }
+);
+
+const NonFungibleTokenBidContract = BidFactory({
+  collectionContract: () =>
+    Collection as unknown as NFTCollectionContractConstructor,
+});
+
+const NonFungibleTokenOfferContract = Approval as unknown as ReturnType<
+  typeof OfferFactory
+>;
 const collectionContract = new Collection(zkCollectionKey);
 const tokenId = collectionContract.deriveTokenId();
 const nftContract = new NFT(zkNFTKey, tokenId);
-const adminContract = useWhitelistedAdmin
+const adminContract = useAdvancedAdmin
   ? new NFTAdvancedAdmin(zkAdminKey)
   : new NFTAdmin(zkAdminKey);
 const bidContract = new NonFungibleTokenBidContract(zkBidKey);
-
+const offerContract = new NonFungibleTokenOfferContract(zkOfferKey);
 const NUMBER_OF_USERS = 6;
 let admin: TestPublicKey;
 let faucet: TestPublicKey;
@@ -182,8 +190,9 @@ describe("NFT contracts tests", () => {
       "Upgrade authority contract address:",
       upgradeAuthority.toBase58()
     );
-    console.log("WhitelistedAdmin:", useWhitelistedAdmin);
+    console.log("AdvancedAdmin:", useAdvancedAdmin);
     console.log("Bid contract address:", zkBidKey.toBase58());
+    console.log("Offer contract address:", zkOfferKey.toBase58());
 
     if (chain === "local" || chain === "lightnet") {
       await fetchMinaAccount({ publicKey: faucet, force: true });
@@ -254,6 +263,78 @@ describe("NFT contracts tests", () => {
     Memory.info("before compiling");
   });
 
+  it("should analyze contracts methods", async () => {
+    console.log("Analyzing contracts methods...");
+    console.time("methods analyzed");
+    const methods = [
+      {
+        name: "NFT",
+        result: await NFT.analyzeMethods(),
+        skip: false,
+      },
+      {
+        name: "Admin",
+        result: await NFTAdmin.analyzeMethods(),
+        skip: false,
+      },
+      {
+        name: "AdvancedAdmin",
+        result: await NFTAdvancedAdmin.analyzeMethods(),
+        skip: false,
+      },
+      {
+        name: "UpgradeAuthority",
+        result: await VerificationKeyUpgradeAuthority.analyzeMethods(),
+        skip: false,
+      },
+      {
+        name: "Collection",
+        result: await (Collection as any).analyzeMethods(),
+        skip: false,
+      },
+      {
+        name: "NFTProgram",
+        result: await NFTProgram.analyzeMethods(),
+        skip: true,
+      },
+      {
+        name: "Offer Contract",
+        result: await (NonFungibleTokenOfferContract as any).analyzeMethods(),
+        skip: false,
+      },
+      {
+        name: "Bid Contract",
+        result: await NonFungibleTokenBidContract.analyzeMethods(),
+        skip: false,
+      },
+    ];
+    console.timeEnd("methods analyzed");
+    const maxRows = 2 ** 16;
+    for (const contract of methods) {
+      // calculate the size of the contract - the sum or rows for each method
+      const size = Object.values(contract.result).reduce(
+        (acc, method) => acc + (method as any).rows,
+        0
+      );
+      // calculate percentage rounded to 0 decimal places
+      const percentage =
+        Math.round((((size as number) * 100) / maxRows) * 100) / 100;
+
+      console.log(
+        `${contract.name} rows: ${size} (${percentage}% of max ${maxRows} rows)`
+      );
+      if (contract.skip !== true)
+        for (const method in contract.result) {
+          console.log(
+            "\t",
+            method,
+            `rows:`,
+            (contract.result as any)[method].rows
+          );
+        }
+    }
+  });
+
   it("should compile NFT Contract", async () => {
     console.log("compiling...");
     console.time("compiled NFTContract");
@@ -264,7 +345,7 @@ describe("NFT contracts tests", () => {
     assert.strictEqual(nftContractVk.data, vk.NFT.data);
   });
 
-  it("should compile Admin", async () => {
+  it("should compile Admin", { skip: useAdvancedAdmin }, async () => {
     console.time("compiled Admin");
     const { verificationKey } = await NFTAdmin.compile({ cache });
     adminVk = verificationKey;
@@ -272,33 +353,49 @@ describe("NFT contracts tests", () => {
     console.log("Admin vk hash:", adminVk.hash.toJSON());
   });
 
-  it("should compile WhitelistedAdmin", async () => {
-    console.time("compiled WhitelistedAdmin");
+  it("should compile AdvancedAdmin", { skip: !useAdvancedAdmin }, async () => {
+    console.time("compiled AdvancedAdmin");
     const { verificationKey } = await NFTAdvancedAdmin.compile({
       cache,
     });
-    whitelistedAdminVk = verificationKey;
-    console.timeEnd("compiled WhitelistedAdmin");
-    console.log("WhitelistedAdmin vk hash:", whitelistedAdminVk.hash.toJSON());
+    AdvancedAdminVk = verificationKey;
+    console.timeEnd("compiled AdvancedAdmin");
+    console.log("AdvancedAdmin vk hash:", AdvancedAdminVk.hash.toJSON());
   });
 
-  it("should compile UpgradeAuthority", async () => {
-    console.time("compiled UpgradeAuthority");
-    const { verificationKey } = await VerificationKeyUpgradeAuthority.compile({
-      cache,
-    });
-    upgradeAuthorityVk = verificationKey;
-    console.timeEnd("compiled UpgradeAuthority");
-    console.log("UpgradeAuthority vk hash:", upgradeAuthorityVk.hash.toJSON());
-  });
+  it(
+    "should compile UpgradeAuthority",
+    { skip: !useAdvancedAdmin },
+    async () => {
+      console.time("compiled UpgradeAuthority");
+      const { verificationKey } = await VerificationKeyUpgradeAuthority.compile(
+        {
+          cache,
+        }
+      );
+      upgradeAuthorityVk = verificationKey;
+      console.timeEnd("compiled UpgradeAuthority");
+      console.log(
+        "UpgradeAuthority vk hash:",
+        upgradeAuthorityVk.hash.toJSON()
+      );
+    }
+  );
 
-  it("should compile ValidatorsVoting", async () => {
-    console.time("compiled ValidatorsVoting");
-    const { verificationKey } = await ValidatorsVoting.compile({ cache });
-    validatorsVotingVk = verificationKey;
-    console.timeEnd("compiled ValidatorsVoting");
-    console.log("ValidatorsVoting vk hash:", validatorsVotingVk.hash.toJSON());
-  });
+  it(
+    "should compile ValidatorsVoting",
+    { skip: !useAdvancedAdmin },
+    async () => {
+      console.time("compiled ValidatorsVoting");
+      const { verificationKey } = await ValidatorsVoting.compile({ cache });
+      validatorsVotingVk = verificationKey;
+      console.timeEnd("compiled ValidatorsVoting");
+      console.log(
+        "ValidatorsVoting vk hash:",
+        validatorsVotingVk.hash.toJSON()
+      );
+    }
+  );
 
   it("should compile Collection", async () => {
     console.time("compiled Collection");
@@ -315,6 +412,16 @@ describe("NFT contracts tests", () => {
     console.log("NFTProgram vk hash:", nftProgramVk.hash.toJSON());
   });
 
+  it("should compile Offer Contract", async () => {
+    console.time("compiled Offer Contract");
+    const { verificationKey } = await NonFungibleTokenOfferContract.compile({
+      cache,
+    });
+    offerVk = verificationKey;
+    console.timeEnd("compiled Offer Contract");
+    console.log("Offer Contract vk hash:", offerVk.hash.toJSON());
+  });
+
   it("should compile Bid Contract", async () => {
     console.time("compiled Bid Contract");
     const { verificationKey } = await NonFungibleTokenBidContract.compile({
@@ -325,135 +432,82 @@ describe("NFT contracts tests", () => {
     console.log("Bid Contract vk hash:", bidVk.hash.toJSON());
   });
 
-  it("should analyze contracts methods", async () => {
-    console.log("Analyzing contracts methods...");
-    console.time("methods analyzed");
-    const methods = [
-      {
-        name: "NFT",
-        result: await NFT.analyzeMethods(),
-        skip: false,
-      },
-      {
-        name: "Admin",
-        result: await NFTAdmin.analyzeMethods(),
-        skip: false,
-      },
-      {
-        name: "WhitelistedAdmin",
-        result: await NFTAdvancedAdmin.analyzeMethods(),
-        skip: false,
-      },
-      {
-        name: "UpgradeAuthority",
-        result: await VerificationKeyUpgradeAuthority.analyzeMethods(),
-        skip: false,
-      },
-      {
-        name: "Collection",
-        result: await Collection.analyzeMethods(),
-        skip: false,
-      },
-      {
-        name: "NFTProgram",
-        result: await NFTProgram.analyzeMethods(),
-        skip: true,
-      },
-    ];
-    console.timeEnd("methods analyzed");
-    const maxRows = 2 ** 16;
-    for (const contract of methods) {
-      // calculate the size of the contract - the sum or rows for each method
-      const size = Object.values(contract.result).reduce(
-        (acc, method) => acc + (method as any).rows,
-        0
-      );
-      // calculate percentage rounded to 0 decimal places
-      const percentage =
-        Math.round((((size as number) * 100) / maxRows) * 100) / 100;
+  it(
+    "should deploy an UpgradeAuthority",
+    { skip: !useAdvancedAdmin },
+    async () => {
+      Memory.info("before deploy");
+      console.time("deployed UpgradeAuthority");
+      const validatorsList = new ValidatorsList();
+      const validatorsCount = 2; // majority is 2 validators out of 3
+      const list: { key: TestPublicKey; authorizedToVote: boolean }[] = [
+        { key: validators[0], authorizedToVote: true },
+        { key: TestPublicKey.random(), authorizedToVote: false },
+        { key: validators[1], authorizedToVote: true },
+        { key: validators[2], authorizedToVote: true },
+        { key: TestPublicKey.random(), authorizedToVote: false },
+      ];
 
-      console.log(
-        `method's total size for a ${contract.name} is ${size} rows (${percentage}% of max ${maxRows} rows)`
-      );
-      // if (contract.skip !== true)
-      //   for (const method in contract.result) {
-      //     console.log(method, `rows:`, (contract.result as any)[method].rows);
-      //   }
-    }
-  });
-
-  it("should deploy an UpgradeAuthority", async () => {
-    Memory.info("before deploy");
-    console.time("deployed UpgradeAuthority");
-    const validatorsList = new ValidatorsList();
-    const validatorsCount = 2; // majority is 2 validators out of 3
-    const list: { key: TestPublicKey; authorizedToVote: boolean }[] = [
-      { key: validators[0], authorizedToVote: true },
-      { key: TestPublicKey.random(), authorizedToVote: false },
-      { key: validators[1], authorizedToVote: true },
-      { key: validators[2], authorizedToVote: true },
-      { key: TestPublicKey.random(), authorizedToVote: false },
-    ];
-
-    for (let i = 0; i < list.length; i++) {
-      const key = Poseidon.hashPacked(PublicKey, list[i].key);
-      validatorsList.set(key, Field(Bool(list[i].authorizedToVote).value));
-    }
-
-    const data: ValidatorsListData = {
-      validators: list.map((v) => ({
-        publicKey: v.key.toBase58(),
-        authorizedToVote: v.authorizedToVote,
-      })),
-      validatorsCount,
-      root: validatorsList.root.toJSON(),
-      map: serializeIndexedMap(validatorsList),
-    };
-
-    const ipfs = await pinJSON({
-      data,
-      name: "upgrade-authority-list",
-    });
-    if (!ipfs) {
-      throw new Error("List IPFS hash is undefined");
-    }
-
-    const validatorState = new ValidatorsState({
-      chainId: ChainId[chain === "devnet" ? "mina:devnet" : "zeko:devnet"],
-      root: validatorsList.root,
-      count: UInt32.from(validatorsCount),
-    });
-
-    await fetchMinaAccount({ publicKey: admin, force: true });
-    const tx = await Mina.transaction(
-      {
-        sender: admin,
-        fee: 100_000_000,
-        memo: `Deploy UpgradeAuthority`,
-      },
-      async () => {
-        AccountUpdate.fundNewAccount(admin, 1);
-        // deploy() and initialize() create 2 account updates for the same publicKey, it is intended
-        await upgradeAuthorityContract.deploy();
-        await upgradeAuthorityContract.initialize(
-          validatorState,
-          Storage.fromString(ipfs),
-          validatorsVotingVk.hash
-        );
+      for (let i = 0; i < list.length; i++) {
+        const key = Poseidon.hashPacked(PublicKey, list[i].key);
+        validatorsList.set(key, Field(Bool(list[i].authorizedToVote).value));
       }
-    );
-    await tx.prove();
-    assert.strictEqual(
-      (
-        await sendTx({
-          tx: tx.sign([admin.key, upgradeAuthority.key]),
-          description: "deploy UpgradeAuthority",
-        })
-      )?.status,
-      expectedTxStatus
-    );
-    console.timeEnd("deployed UpgradeAuthority");
-  });
+
+      const data: ValidatorsListData = {
+        validators: list.map((v) => ({
+          publicKey: v.key.toBase58(),
+          authorizedToVote: v.authorizedToVote,
+        })),
+        validatorsCount,
+        root: validatorsList.root.toJSON(),
+        map: serializeIndexedMap(validatorsList),
+      };
+
+      const ipfs = await pinJSON({
+        data,
+        name: "upgrade-authority-list",
+      });
+      if (!ipfs) {
+        throw new Error("List IPFS hash is undefined");
+      }
+
+      const validatorState = new ValidatorsState({
+        chainId: ChainId[chain === "devnet" ? "mina:devnet" : "zeko:devnet"],
+        root: validatorsList.root,
+        count: UInt32.from(validatorsCount),
+      });
+
+      await fetchMinaAccount({ publicKey: admin, force: true });
+      const tx = await Mina.transaction(
+        {
+          sender: admin,
+          fee: 100_000_000,
+          memo: `Deploy UpgradeAuthority`,
+        },
+        async () => {
+          AccountUpdate.fundNewAccount(admin, 1);
+          // deploy() and initialize() create 2 account updates for the same publicKey, it is intended
+          await upgradeAuthorityContract.deploy();
+          await upgradeAuthorityContract.initialize(
+            validatorState,
+            Storage.fromString(ipfs),
+            validatorsVotingVk.hash
+          );
+        }
+      );
+      await tx.prove();
+      assert.strictEqual(
+        (
+          await sendTx({
+            tx: tx.sign([admin.key, upgradeAuthority.key]),
+            description: "deploy UpgradeAuthority",
+          })
+        )?.status,
+        expectedTxStatus
+      );
+      console.timeEnd("deployed UpgradeAuthority");
+    }
+  );
 
   it("should deploy a Collection", async () => {
     console.time("deployed Collection");
@@ -474,8 +528,9 @@ describe("NFT contracts tests", () => {
       name: fieldFromString(name),
       address: zkCollectionKey,
       tokenId,
-      owner: creator,
-      data: NFTData.new(),
+      data: NFTData.new({
+        owner: creator,
+      }),
       fee: UInt64.zero,
       metadata: metadataRoot,
       storage: Storage.fromString(ipfsHash),
@@ -483,7 +538,7 @@ describe("NFT contracts tests", () => {
       expiry,
     });
     await fetchMinaAccount({ publicKey: creator, force: true });
-    const whitelist = useWhitelistedAdmin
+    const whitelist = useAdvancedAdmin
       ? (
           await Whitelist.create({
             list: TEST_ACCOUNTS.slice(5)
@@ -512,16 +567,13 @@ describe("NFT contracts tests", () => {
             admin: creator,
             upgradeAuthority,
             whitelist,
-            uri: `zkcloudworker@$0.20.0#WhitelistedAdminContract`,
-            isPaused: Bool(false),
-            canPause: Bool(true),
+            uri: `zkcloudworker@$0.20.0#AdvancedAdminContract`,
+            adminData: AdminData.new(),
           });
         } else if (adminContract instanceof NFTAdmin) {
           await adminContract.deploy({
             admin: creator,
             uri: `zkcloudworker@0.18.29#AdminContract`,
-            isPaused: Bool(false),
-            canPause: Bool(true),
           });
         } else {
           throw new Error("Admin contract is not supported");
@@ -538,11 +590,7 @@ describe("NFT contracts tests", () => {
         await collectionContract.initialize(
           masterNFT,
           CollectionData.new({
-            requireTransferApproval: true,
-            requireOfferApproval: true,
-            requireSaleApproval: false,
-            requireBuyApproval: true,
-            requireUpdateApproval: true,
+            requireTransferApproval: false,
             royaltyFee: 10, // 10%
             transferFee: 1_000_000_000, // 1 MINA
           })
@@ -606,11 +654,11 @@ describe("NFT contracts tests", () => {
           name: fieldFromString(name),
           address: zkNFTKey,
           tokenId,
-          owner,
           metadata: metadataRoot,
           data: NFTData.new({
             canChangeMetadata: true,
             canPause: true,
+            owner,
           }),
           metadataVerificationKeyHash: nftProgramVk.hash,
           expiry,
@@ -631,8 +679,17 @@ describe("NFT contracts tests", () => {
     );
     await fetchMinaAccount({ publicKey: zkNFTKey, tokenId, force: true });
     const nft = new NFT(zkNFTKey, tokenId);
-    const ownerCheck = nft.owner.get();
-    assert.strictEqual(ownerCheck.equals(creator).toBoolean(), true);
+    const dataCheck = NFTData.unpack(nft.packedData.get());
+    console.log("owner", owner.toBase58());
+    console.log("ownerCheck", dataCheck.owner.toBase58());
+    console.log("approvalCheck", dataCheck.approved.toBase58());
+
+    console.log("creator", creator.toBase58());
+    assert.strictEqual(dataCheck.owner.equals(creator).toBoolean(), true);
+    assert.strictEqual(
+      dataCheck.approved.equals(PublicKey.empty()).toBoolean(),
+      true
+    );
     console.timeEnd("minted NFT");
     owner = creator;
   });
@@ -645,10 +702,10 @@ describe("NFT contracts tests", () => {
     await fetchMinaAccount({ publicKey: zkCollectionKey, force: true });
     await fetchMinaAccount({ publicKey: zkAdminKey, force: true });
     await fetchMinaAccount({ publicKey: zkNFTKey, tokenId, force: true });
-    const requireOfferApproval = CollectionData.unpack(
-      collectionContract.packedData.get()
-    ).requireOfferApproval.toBoolean();
-    console.log("requireOfferApproval", requireOfferApproval);
+    // const requireOfferApproval = CollectionData.unpack(
+    //   collectionContract.packedData.get()
+    // ).requireOfferApproval.toBoolean();
+    // console.log("requireOfferApproval", requireOfferApproval);
     const nft = nftParams.find(
       (p) =>
         p.address.equals(zkNFTKey).toBoolean() &&
@@ -659,35 +716,6 @@ describe("NFT contracts tests", () => {
     }
     const { name } = nft;
 
-    let success = true;
-    try {
-      const tx = await Mina.transaction(
-        {
-          sender: seller,
-          fee: 100_000_000,
-          memo: `Sell NFT ${name}`.substring(0, 30),
-        },
-        async () => {
-          if (!requireOfferApproval) {
-            await collectionContract.offerWithApproval(zkNFTKey, price);
-          } else {
-            await collectionContract.offer(zkNFTKey, price);
-          }
-        }
-      );
-      await tx.prove();
-      await sendTx({
-        tx: tx.sign([seller.key]),
-        description: "offer attempt",
-      });
-    } catch (e: any) {
-      success = false;
-      console.error(
-        `Attempt to offer NFT with wrong approval failed: ${e?.message ?? ""}`
-      );
-    }
-    assert.strictEqual(success, false);
-
     const tx = await Mina.transaction(
       {
         sender: seller,
@@ -695,24 +723,37 @@ describe("NFT contracts tests", () => {
         memo: `Offer NFT ${name}`.substring(0, 30),
       },
       async () => {
-        if (requireOfferApproval) {
-          await collectionContract.offerWithApproval(zkNFTKey, price);
-        } else {
-          await collectionContract.offer(zkNFTKey, price);
-        }
+        AccountUpdate.fundNewAccount(seller, 1);
+        await collectionContract.approveAddress(zkNFTKey, zkOfferKey);
+        await offerContract.deploy({
+          collection: zkCollectionKey,
+          nft: zkNFTKey,
+          owner: seller,
+          price,
+        });
       }
     );
     await tx.prove();
     assert.strictEqual(
       (
         await sendTx({
-          tx: tx.sign([seller.key]),
+          tx: tx.sign([seller.key, zkOfferKey.key]),
           description: "offer",
         })
       )?.status,
       expectedTxStatus
     );
 
+    await fetchMinaAccount({ publicKey: zkNFTKey, tokenId, force: true });
+    const zkNFT = new NFT(zkNFTKey, tokenId);
+    const dataCheck = NFTData.unpack(zkNFT.packedData.get());
+    console.log("owner", owner.toBase58());
+    console.log("ownerCheck", dataCheck.owner.toBase58());
+    console.log("approvalCheck", dataCheck.approved.toBase58());
+
+    console.log("creator", creator.toBase58());
+    assert.strictEqual(dataCheck.owner.equals(creator).toBoolean(), true);
+    assert.strictEqual(dataCheck.approved.equals(zkOfferKey).toBoolean(), true);
     console.timeEnd("offered NFT");
   });
 
@@ -724,10 +765,11 @@ describe("NFT contracts tests", () => {
     await fetchMinaAccount({ publicKey: zkCollectionKey, force: true });
     await fetchMinaAccount({ publicKey: zkAdminKey, force: true });
     await fetchMinaAccount({ publicKey: zkNFTKey, tokenId, force: true });
-    const requireBuyApproval = CollectionData.unpack(
-      collectionContract.packedData.get()
-    ).requireBuyApproval.toBoolean();
-    console.log("requireBuyApproval", requireBuyApproval);
+    await fetchMinaAccount({ publicKey: zkOfferKey, force: true });
+    // const requireBuyApproval = CollectionData.unpack(
+    //   collectionContract.packedData.get()
+    // ).requireBuyApproval.toBoolean();
+    // console.log("requireBuyApproval", requireBuyApproval);
     const nft = nftParams.find(
       (p) =>
         p.address.equals(zkNFTKey).toBoolean() &&
@@ -738,36 +780,6 @@ describe("NFT contracts tests", () => {
     }
     const { name } = nft;
 
-    let success = true;
-    try {
-      const tx = await Mina.transaction(
-        {
-          sender: buyer,
-          fee: 100_000_000,
-          memo: `Buy NFT ${name}`.substring(0, 30),
-        },
-        async () => {
-          if (!requireBuyApproval) {
-            await collectionContract.buyWithApproval(zkNFTKey, price);
-          } else {
-            await collectionContract.buy(zkNFTKey, price);
-          }
-        }
-      );
-      await tx.prove();
-      await sendTx({
-        tx: tx.sign([buyer.key]),
-        description: "buy",
-      });
-      owner = buyer;
-    } catch (e: any) {
-      success = false;
-      console.error(
-        `Attempt to buy NFT with wrong approval failed: ${e?.message ?? ""}`
-      );
-    }
-    assert.strictEqual(success, false);
-
     const tx = await Mina.transaction(
       {
         sender: buyer,
@@ -775,14 +787,11 @@ describe("NFT contracts tests", () => {
         memo: `Buy NFT ${name}`.substring(0, 30),
       },
       async () => {
-        if (requireBuyApproval) {
-          await collectionContract.buyWithApproval(zkNFTKey, price);
-        } else {
-          await collectionContract.buy(zkNFTKey, price);
-        }
+        await offerContract.buy();
       }
     );
     await tx.prove();
+    //console.log("tx", tx.toPretty());
     assert.strictEqual(
       (
         await sendTx({
@@ -794,12 +803,26 @@ describe("NFT contracts tests", () => {
     );
     console.timeEnd("bought NFT");
     owner = buyer;
+
+    await fetchMinaAccount({ publicKey: zkNFTKey, tokenId, force: true });
+    const zkNFT = new NFT(zkNFTKey, tokenId);
+    const dataCheck = NFTData.unpack(zkNFT.packedData.get());
+    console.log("owner", owner.toBase58());
+    console.log("ownerCheck", dataCheck.owner.toBase58());
+    console.log("approvalCheck", dataCheck.approved.toBase58());
+
+    console.log("creator", creator.toBase58());
+    assert.strictEqual(dataCheck.owner.equals(owner).toBoolean(), true);
+    assert.strictEqual(
+      dataCheck.approved.equals(PublicKey.empty()).toBoolean(),
+      true
+    );
   });
 
   it("should bid NFT", async () => {
     Memory.info("before bid");
     console.time("bid NFT");
-    const buyer = users[5];
+    const buyer = whitelistedUsers[1];
     console.log("Bid contract address:", zkBidKey.toBase58());
     console.log("Buyer address:", buyer.toBase58());
     await fetchMinaAccount({ publicKey: buyer, force: true });
@@ -898,10 +921,6 @@ describe("NFT contracts tests", () => {
     await fetchMinaAccount({ publicKey: zkAdminKey, force: true });
     await fetchMinaAccount({ publicKey: zkNFTKey, tokenId, force: true });
     await fetchMinaAccount({ publicKey: zkBidKey, force: true });
-    const requireSaleApproval = CollectionData.unpack(
-      collectionContract.packedData.get()
-    ).requireSaleApproval.toBoolean();
-    console.log("requireSaleApproval", requireSaleApproval);
     const nft = nftParams.find(
       (p) =>
         p.address.equals(zkNFTKey).toBoolean() &&
@@ -924,11 +943,7 @@ describe("NFT contracts tests", () => {
         memo: `Accept bid on NFT ${name}`.substring(0, 30),
       },
       async () => {
-        if (requireSaleApproval) {
-          await bidContract.sellWithApproval(nftAddress, price);
-        } else {
-          await bidContract.sell(nftAddress, price);
-        }
+        await bidContract.sell(nftAddress, price);
       }
     );
     await tx.prove();
@@ -951,7 +966,7 @@ describe("NFT contracts tests", () => {
     );
 
     console.timeEnd("accept bid");
-    owner = users[5];
+    owner = whitelistedUsers[1];
   });
 
   it("should update NFT metadata", async () => {
@@ -968,10 +983,6 @@ describe("NFT contracts tests", () => {
       nftAccount.zkapp?.verificationKey?.hash.toJSON(),
       nftContractVk.hash.toJSON()
     );
-    const requireUpdateApproval = CollectionData.unpack(
-      collectionContract.packedData.get()
-    ).requireUpdateApproval.toBoolean();
-    console.log("requireUpdateApproval", requireUpdateApproval);
     const nftState = NFTState.fromNFTState({
       nftState: nftStateStruct,
       creator: creator,
@@ -1061,38 +1072,6 @@ describe("NFT contracts tests", () => {
     const dynamicProof = NFTUpdateProof.fromProof(mergedProof.proof);
     console.timeEnd("merged proofs");
 
-    let success = true;
-    try {
-      const tx = await Mina.transaction(
-        {
-          sender: owner,
-          fee: 100_000_000,
-          memo: `Update NFT ${name}`.substring(0, 30),
-        },
-        async () => {
-          if (!requireUpdateApproval) {
-            await collectionContract.updateWithApproval(
-              dynamicProof,
-              nftProgramVk
-            );
-          } else {
-            await collectionContract.update(dynamicProof, nftProgramVk);
-          }
-        }
-      );
-      await tx.prove();
-      await sendTx({
-        tx: tx.sign([owner.key]),
-        description: "update attempt",
-      });
-    } catch (e: any) {
-      success = false;
-      console.error(
-        `Attempt to update NFT with wrong approval failed: ${e?.message ?? ""}`
-      );
-    }
-    assert.strictEqual(success, false);
-
     const tx = await Mina.transaction(
       {
         sender: owner,
@@ -1100,14 +1079,7 @@ describe("NFT contracts tests", () => {
         memo: `Update NFT ${name}`.substring(0, 30),
       },
       async () => {
-        if (requireUpdateApproval) {
-          await collectionContract.updateWithApproval(
-            dynamicProof,
-            nftProgramVk
-          );
-        } else {
-          await collectionContract.update(dynamicProof, nftProgramVk);
-        }
+        await collectionContract.update(dynamicProof, nftProgramVk);
       }
     );
     await tx.prove();
@@ -1150,44 +1122,44 @@ describe("NFT contracts tests", () => {
     }
     const { name } = nft;
 
-    let success = true;
-    try {
-      const tx = await Mina.transaction(
-        {
-          sender: owner,
-          fee: 100_000_000,
-          memo: `Transfer NFT ${name}`.substring(0, 30),
-        },
-        async () => {
-          if (!requireTransferApproval) {
-            await collectionContract.transferNFTWithApproval(
-              zkNFTKey,
-              to,
-              UInt64Option.none()
-            );
-          } else {
-            await collectionContract.transferNFT(
-              zkNFTKey,
-              to,
-              UInt64Option.none()
-            );
-          }
-        }
-      );
-      await tx.prove();
-      await sendTx({
-        tx: tx.sign([owner.key]),
-        description: "transfer attempt",
-      });
-    } catch (e: any) {
-      success = false;
-      console.error(
-        `Attempt to transfer NFT with wrong approval failed: ${
-          e?.message ?? ""
-        }`
-      );
-    }
-    assert.strictEqual(success, false);
+    // let success = true;
+    // try {
+    //   const tx = await Mina.transaction(
+    //     {
+    //       sender: owner,
+    //       fee: 100_000_000,
+    //       memo: `Transfer NFT ${name}`.substring(0, 30),
+    //     },
+    //     async () => {
+    //       if (!requireTransferApproval) {
+    //         await collectionContract.transferBySignature(
+    //           zkNFTKey,
+    //           to,
+    //           UInt64Option.none()
+    //         );
+    //       } else {
+    //         await collectionContract.transferBySignature(
+    //           zkNFTKey,
+    //           to,
+    //           UInt64Option.none()
+    //         );
+    //       }
+    //     }
+    //   );
+    //   await tx.prove();
+    //   await sendTx({
+    //     tx: tx.sign([owner.key]),
+    //     description: "transfer attempt",
+    //   });
+    // } catch (e: any) {
+    //   success = false;
+    //   console.error(
+    //     `Attempt to transfer NFT with wrong approval failed: ${
+    //       e?.message ?? ""
+    //     }`
+    //   );
+    // }
+    // assert.strictEqual(success, false);
 
     const tx = await Mina.transaction(
       {
@@ -1197,13 +1169,13 @@ describe("NFT contracts tests", () => {
       },
       async () => {
         if (requireTransferApproval) {
-          await collectionContract.transferNFTWithApproval(
+          await collectionContract.transferBySignature(
             zkNFTKey,
             to,
             UInt64Option.none()
           );
         } else {
-          await collectionContract.transferNFT(
+          await collectionContract.transferBySignature(
             zkNFTKey,
             to,
             UInt64Option.none()
@@ -1249,7 +1221,7 @@ describe("NFT contracts tests", () => {
         memo: `Pause NFT ${name}`.substring(0, 30),
       },
       async () => {
-        await collectionContract.pauseNFT(zkNFTKey);
+        await collectionContract.pauseNFTBySignature(zkNFTKey);
       }
     );
     await tx.prove();
@@ -1296,13 +1268,13 @@ describe("NFT contracts tests", () => {
         },
         async () => {
           if (requireTransferApproval) {
-            await collectionContract.transferNFTWithApproval(
+            await collectionContract.transferBySignature(
               zkNFTKey,
               to,
               UInt64Option.none()
             );
           } else {
-            await collectionContract.transferNFT(
+            await collectionContract.transferBySignature(
               zkNFTKey,
               to,
               UInt64Option.none()
@@ -1396,13 +1368,13 @@ describe("NFT contracts tests", () => {
       },
       async () => {
         if (requireTransferApproval) {
-          await collectionContract.transferNFTWithApproval(
+          await collectionContract.transferBySignature(
             zkNFTKey,
             to,
             UInt64Option.none()
           );
         } else {
-          await collectionContract.transferNFT(
+          await collectionContract.transferBySignature(
             zkNFTKey,
             to,
             UInt64Option.none()
@@ -1485,13 +1457,13 @@ describe("NFT contracts tests", () => {
         },
         async () => {
           if (requireTransferApproval) {
-            await collectionContract.transferNFTWithApproval(
+            await collectionContract.transferBySignature(
               zkNFTKey,
               to,
               UInt64Option.none()
             );
           } else {
-            await collectionContract.transferNFT(
+            await collectionContract.transferBySignature(
               zkNFTKey,
               to,
               UInt64Option.none()
@@ -1545,110 +1517,112 @@ describe("NFT contracts tests", () => {
     console.timeEnd("resumed Collection");
   });
 
-  it("should set a UpgradeAuthority database", async () => {
-    console.time("Set UpgradeAuthority");
-    await fetchMinaAccount({ publicKey: admin, force: true });
-    await fetchMinaAccount({ publicKey: upgradeAuthority, force: true });
-    const events = await upgradeAuthorityContract.fetchEvents();
-    const lastEvent = events
-      .filter((e) => e.type === "validatorsList")
-      .reverse()[0];
-    if (!lastEvent) {
-      throw new Error("No validatorsList event found");
-    }
-    const eventData = lastEvent.event.data as unknown as ValidatorsListEvent;
+  it(
+    "should set a UpgradeAuthority database",
+    { skip: !useAdvancedAdmin },
+    async () => {
+      console.time("Set UpgradeAuthority");
+      await fetchMinaAccount({ publicKey: admin, force: true });
+      await fetchMinaAccount({ publicKey: upgradeAuthority, force: true });
+      const events = await upgradeAuthorityContract.fetchEvents();
+      const lastEvent = events
+        .filter((e) => e.type === "validatorsList")
+        .reverse()[0];
+      if (!lastEvent) {
+        throw new Error("No validatorsList event found");
+      }
+      const eventData = lastEvent.event.data as unknown as ValidatorsListEvent;
 
-    const storage = eventData.storage;
-    console.log("storage", storage.toString());
+      const storage = eventData.storage;
+      console.log("storage", storage.toString());
 
-    const { map, data } = await checkValidatorsList({
-      storage,
-    });
-    const validatorState = new ValidatorsState({
-      chainId: ChainId[chain === "devnet" ? "mina:devnet" : "zeko:devnet"],
-      root: map.root,
-      count: UInt32.from(data.validatorsCount),
-    });
+      const { map, data } = await checkValidatorsList({
+        storage,
+      });
+      const validatorState = new ValidatorsState({
+        chainId: ChainId[chain === "devnet" ? "mina:devnet" : "zeko:devnet"],
+        root: map.root,
+        count: UInt32.from(data.validatorsCount),
+      });
 
-    const key1 = new VerificationKeyUpgradeData({
-      address: collectionContract.address,
-      tokenId: collectionContract.tokenId,
-      previousVerificationKeyHash: collectionVk.hash,
-      newVerificationKeyHash: collectionVk.hash,
-    });
-    const key2 = new VerificationKeyUpgradeData({
-      address: nftContract.address,
-      tokenId: nftContract.tokenId,
-      previousVerificationKeyHash: nftContractVk.hash,
-      newVerificationKeyHash: nftContractVk.hash,
-    });
-    console.log("adminVk.hash", adminVk.hash.toJSON());
-    const key3 = new VerificationKeyUpgradeData({
-      address: adminContract.address,
-      tokenId: adminContract.tokenId,
-      previousVerificationKeyHash: useWhitelistedAdmin
-        ? whitelistedAdminVk.hash
-        : adminVk.hash,
-      newVerificationKeyHash: useWhitelistedAdmin
-        ? whitelistedAdminVk.hash
-        : adminVk.hash,
-    });
-    const db = new UpgradeAuthorityDatabase();
-    db.set(key1.hash(), key1.newVerificationKeyHash);
-    db.set(key2.hash(), key2.newVerificationKeyHash);
-    db.set(key3.hash(), key3.newVerificationKeyHash);
-    const ipfs = await pinJSON({
-      data: { "indexed-map": { map: serializeIndexedMap(db) } },
-      name: "upgrade-authority-database",
-    });
-    if (!ipfs) {
-      throw new Error("UpgradeAuthority database IPFS hash is undefined");
-    }
+      const key1 = new VerificationKeyUpgradeData({
+        address: collectionContract.address,
+        tokenId: collectionContract.tokenId,
+        previousVerificationKeyHash: collectionVk.hash,
+        newVerificationKeyHash: collectionVk.hash,
+      });
+      const key2 = new VerificationKeyUpgradeData({
+        address: nftContract.address,
+        tokenId: nftContract.tokenId,
+        previousVerificationKeyHash: nftContractVk.hash,
+        newVerificationKeyHash: nftContractVk.hash,
+      });
+      const key3 = new VerificationKeyUpgradeData({
+        address: adminContract.address,
+        tokenId: adminContract.tokenId,
+        previousVerificationKeyHash: useAdvancedAdmin
+          ? AdvancedAdminVk.hash
+          : adminVk.hash,
+        newVerificationKeyHash: useAdvancedAdmin
+          ? AdvancedAdminVk.hash
+          : adminVk.hash,
+      });
+      const db = new UpgradeAuthorityDatabase();
+      db.set(key1.hash(), key1.newVerificationKeyHash);
+      db.set(key2.hash(), key2.newVerificationKeyHash);
+      db.set(key3.hash(), key3.newVerificationKeyHash);
+      const ipfs = await pinJSON({
+        data: { "indexed-map": { map: serializeIndexedMap(db) } },
+        name: "upgrade-authority-database",
+      });
+      if (!ipfs) {
+        throw new Error("UpgradeAuthority database IPFS hash is undefined");
+      }
 
-    const decision = new ValidatorsDecision({
-      message: fieldFromString("Set UpgradeAuthority"),
-      decisionType: ValidatorDecisionType["updateDatabase"],
-      contractAddress: upgradeAuthority,
-      chainId: ChainId[chain === "devnet" ? "mina:devnet" : "zeko:devnet"],
-      validators: validatorState,
-      upgradeDatabase: new UpgradeDatabaseState({
-        root: db.root,
-        storage: Storage.fromString(ipfs),
-        nextUpgradeAuthority: PublicKeyOption.none(),
-        version: UInt32.from(1),
-        validFrom: UInt32.zero,
-      }),
-      updateValidatorsList: ValidatorsState.empty(),
-      expiry: UInt32.MAXINT(),
-    });
-    let state = ValidatorsDecisionState.startVoting(decision);
-    const proofs = [];
+      const decision = new ValidatorsDecision({
+        message: fieldFromString("Set UpgradeAuthority"),
+        decisionType: ValidatorDecisionType["updateDatabase"],
+        contractAddress: upgradeAuthority,
+        chainId: ChainId[chain === "devnet" ? "mina:devnet" : "zeko:devnet"],
+        validators: validatorState,
+        upgradeDatabase: new UpgradeDatabaseState({
+          root: db.root,
+          storage: Storage.fromString(ipfs),
+          nextUpgradeAuthority: PublicKeyOption.none(),
+          version: UInt32.from(1),
+          validFrom: UInt32.zero,
+        }),
+        updateValidatorsList: ValidatorsState.empty(),
+        expiry: UInt32.MAXINT(),
+      });
+      let state = ValidatorsDecisionState.startVoting(decision);
+      const proofs = [];
 
-    console.log("voting...");
-    console.time("voted");
-    const voted = new ValidatorsList();
-    const startProof = await ValidatorsVoting.startVoting(state, decision);
-    proofs.push(startProof.proof);
-    for (let i = 0; i < validators.length; i++) {
-      const signature = Signature.create(
-        validators[i].key,
-        ValidatorsDecision.toFields(decision)
-      );
-      const nullifier = Nullifier.fromJSON(
-        decision.createJsonNullifier({
-          network: "testnet",
-          privateKey: validators[i].key,
-        })
-      );
+      console.log("voting...");
+      console.time("voted");
+      const voted = new ValidatorsList();
+      const startProof = await ValidatorsVoting.startVoting(state, decision);
+      proofs.push(startProof.proof);
+      for (let i = 0; i < validators.length; i++) {
+        const signature = Signature.create(
+          validators[i].key,
+          ValidatorsDecision.toFields(decision)
+        );
+        const nullifier = Nullifier.fromJSON(
+          decision.createJsonNullifier({
+            network: "testnet",
+            privateKey: validators[i].key,
+          })
+        );
 
-      //  state = ValidatorsDecisionState.vote(
-      //   state,
-      //   decision,
-      //   validators[i],
-      //   map.clone(),
-      //   signature
-      // );
-      /*
+        //  state = ValidatorsDecisionState.vote(
+        //   state,
+        //   decision,
+        //   validators[i],
+        //   map.clone(),
+        //   signature
+        // );
+        /*
         state: ValidatorsDecisionState,
         decision: ValidatorsDecision,
         nullifier: Nullifier,
@@ -1659,69 +1633,70 @@ describe("NFT contracts tests", () => {
         abstain: Bool,
         signature: Signature
       */
-      const step = await ValidatorsVoting.vote(
-        state,
-        decision,
-        nullifier,
-        map.clone(),
-        voted.clone(),
-        Bool(true),
-        Bool(false),
-        Bool(false),
-        signature
-      );
-      voted.insert(nullifier.key(), Field(1));
-      state = step.proof.publicOutput;
-      proofs.push(step.proof);
-    }
-    let proof = proofs[0];
-    console.timeEnd("voted");
-    console.log("merging vote proofs...");
-    console.time("merged vote proofs");
-    for (let i = 1; i < proofs.length; i++) {
-      const mergedProof = await ValidatorsVoting.merge(
-        proofs[i - 1].publicInput,
-        proofs[i - 1],
-        proofs[i]
-      );
-      proof = mergedProof.proof;
-      const ok = await verify(mergedProof.proof, validatorsVotingVk);
-      if (!ok) {
-        throw new Error("calculateValidatorsProof: Proof is not valid");
-      }
-    }
-    const dynamicProof = ValidatorsVotingProof.fromProof(proof);
-    console.timeEnd("merged vote proofs");
-
-    await fetchMinaAccount({ publicKey: admin, force: true });
-    await fetchMinaAccount({ publicKey: upgradeAuthority, force: true });
-
-    const tx = await Mina.transaction(
-      {
-        sender: admin,
-        fee: 100_000_000,
-        memo: `Set UpgradeAuthority`,
-      },
-      async () => {
-        await upgradeAuthorityContract.updateDatabase(
-          dynamicProof,
-          validatorsVotingVk,
-          validatorState
+        const step = await ValidatorsVoting.vote(
+          state,
+          decision,
+          nullifier,
+          map.clone(),
+          voted.clone(),
+          Bool(true),
+          Bool(false),
+          Bool(false),
+          signature
         );
+        voted.insert(nullifier.key(), Field(1));
+        state = step.proof.publicOutput;
+        proofs.push(step.proof);
       }
-    );
-    await tx.prove();
-    assert.strictEqual(
-      (
-        await sendTx({
-          tx: tx.sign([admin.key]),
-          description: "Set UpgradeAuthority",
-        })
-      )?.status,
-      expectedTxStatus
-    );
-    console.timeEnd("Set UpgradeAuthority");
-  });
+      let proof = proofs[0];
+      console.timeEnd("voted");
+      console.log("merging vote proofs...");
+      console.time("merged vote proofs");
+      for (let i = 1; i < proofs.length; i++) {
+        const mergedProof = await ValidatorsVoting.merge(
+          proofs[i - 1].publicInput,
+          proofs[i - 1],
+          proofs[i]
+        );
+        proof = mergedProof.proof;
+        const ok = await verify(mergedProof.proof, validatorsVotingVk);
+        if (!ok) {
+          throw new Error("calculateValidatorsProof: Proof is not valid");
+        }
+      }
+      const dynamicProof = ValidatorsVotingProof.fromProof(proof);
+      console.timeEnd("merged vote proofs");
+
+      await fetchMinaAccount({ publicKey: admin, force: true });
+      await fetchMinaAccount({ publicKey: upgradeAuthority, force: true });
+
+      const tx = await Mina.transaction(
+        {
+          sender: admin,
+          fee: 100_000_000,
+          memo: `Set UpgradeAuthority`,
+        },
+        async () => {
+          await upgradeAuthorityContract.updateDatabase(
+            dynamicProof,
+            validatorsVotingVk,
+            validatorState
+          );
+        }
+      );
+      await tx.prove();
+      assert.strictEqual(
+        (
+          await sendTx({
+            tx: tx.sign([admin.key]),
+            description: "Set UpgradeAuthority",
+          })
+        )?.status,
+        expectedTxStatus
+      );
+      console.timeEnd("Set UpgradeAuthority");
+    }
+  );
 
   it("should upgrade NFT verification key", async () => {
     Memory.info("before NFT upgrade");
@@ -1731,13 +1706,7 @@ describe("NFT contracts tests", () => {
     await fetchMinaAccount({ publicKey: zkAdminKey, force: true });
     await fetchMinaAccount({ publicKey: zkNFTKey, tokenId, force: true });
     await fetchMinaAccount({ publicKey: upgradeAuthority, force: true });
-    const requireCreatorSignatureToUpgradeNFT = CollectionData.unpack(
-      collectionContract.packedData.get()
-    ).requireCreatorSignatureToUpgradeNFT.toBoolean();
-    console.log(
-      "requireCreatorSignatureToUpgradeNFT",
-      requireCreatorSignatureToUpgradeNFT
-    );
+
     const nft = nftParams.find(
       (p) =>
         p.address.equals(zkNFTKey).toBoolean() &&
@@ -1755,7 +1724,7 @@ describe("NFT contracts tests", () => {
         memo: `Upgrade NFT ${name}`.substring(0, 30),
       },
       async () => {
-        await collectionContract.upgradeNFTVerificationKey(
+        await collectionContract.upgradeNFTVerificationKeyBySignature(
           nft.address,
           nftContractVk
         );
@@ -1814,7 +1783,6 @@ describe("NFT contracts tests", () => {
     await fetchMinaAccount({ publicKey: creator, force: true });
     await fetchMinaAccount({ publicKey: zkAdminKey, force: true });
     await fetchMinaAccount({ publicKey: upgradeAuthority, force: true });
-    console.log("adminVk.hash", adminVk.hash.toJSON());
 
     const tx = await Mina.transaction(
       {
@@ -1824,7 +1792,7 @@ describe("NFT contracts tests", () => {
       },
       async () => {
         await adminContract.upgradeVerificationKey(
-          useWhitelistedAdmin ? whitelistedAdminVk : adminVk
+          useAdvancedAdmin ? AdvancedAdminVk : adminVk
         );
       }
     );
@@ -1871,13 +1839,13 @@ describe("NFT contracts tests", () => {
       },
       async () => {
         if (requireTransferApproval) {
-          await collectionContract.transferNFTWithApproval(
+          await collectionContract.transferBySignature(
             zkNFTKey,
             to,
             UInt64Option.none()
           );
         } else {
-          await collectionContract.transferNFT(
+          await collectionContract.transferBySignature(
             zkNFTKey,
             to,
             UInt64Option.none()
