@@ -187,12 +187,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@minatokens/api@npm:^0.14.0":
-  version: 0.14.0
-  resolution: "@minatokens/api@npm:0.14.0"
+"@minatokens/api@npm:^0.14.1":
+  version: 0.14.1
+  resolution: "@minatokens/api@npm:0.14.1"
   dependencies:
     "@hey-api/client-fetch": "npm:^0.5.6"
-  checksum: 10c0/2ca146791fb5630d5d9388b4419916d4aa8e3d81b08240891ceb65db70f1c0d45d367d03db98556f575902483505ae4df06756e41378e38e657e6d885305d8bb
+  checksum: 10c0/11b1d91dbe1abc675c4a234c57737acab5c581f41c432154fd0d77fd1b4c89896588ca6d09905334cc701ee403ee14bb232e884b5f221fa7e701affe9b26298c
   languageName: node
   linkType: hard
 
@@ -205,41 +205,55 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@minatokens/nft@file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=0e03d5&locator=nft-standard-worker%40workspace%3A.":
-  version: 0.14.0
-  resolution: "@minatokens/nft@file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=0e03d5&locator=nft-standard-worker%40workspace%3A."
+"@minatokens/nft@file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=951d8d&locator=nft-standard-worker%40workspace%3A.":
+  version: 0.14.1
+  resolution: "@minatokens/nft@file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=951d8d&locator=nft-standard-worker%40workspace%3A."
   dependencies:
     mina-signer: "npm:^3.0.7"
     tslib: "npm:^2.8.1"
   peerDependencies:
-    "@minatokens/storage": 0.14.0
-    "@minatokens/upgradable": 0.14.0
+    "@minatokens/storage": 0.14.1
+    "@minatokens/token": 0.14.1
+    "@minatokens/upgradable": 0.14.1
     o1js: ^2.2.0
-  checksum: 10c0/2da21f1df44ddf9b1ff686e6a75cb62d36ceaad068079d713cccdd49a29d8533dd09ab6e95a791f1b4f302fcef6c96d2098766a4fa916936c0f5107baaced7b3
+  checksum: 10c0/f5f1e94a6646dec5550bdb66d81ed931689bab6c495f0f1154a27e575aadea4b3377245a1d5f30900266c28b607523be1fd11742086b1b2a038e6ea0a97c8bd1
   languageName: node
   linkType: hard
 
-"@minatokens/storage@npm:^0.14.0":
-  version: 0.14.0
-  resolution: "@minatokens/storage@npm:0.14.0"
+"@minatokens/storage@npm:^0.14.1":
+  version: 0.14.1
+  resolution: "@minatokens/storage@npm:0.14.1"
   dependencies:
     tslib: "npm:^2.8.1"
   peerDependencies:
     o1js: ^2.2.0
-  checksum: 10c0/ec1863eceb20fb00d2d022728e348c74e9a95384c1b4abee12cfcfadfdd87c4f9ee05efd5513f90e2d31679a383bb81d970379a2b97c4e28601bd33994e63ef3
+  checksum: 10c0/84f9fd0007978fb455cf2d225c9c5fc8fac2fcf58684abdbdbbb6356783d5c20c213f359fb7612788e6999eec0d445b2385ebc8218b2693368c8f34d7d9e719a
   languageName: node
   linkType: hard
 
-"@minatokens/upgradable@npm:^0.14.0":
-  version: 0.14.0
-  resolution: "@minatokens/upgradable@npm:0.14.0"
+"@minatokens/token@npm:^0.14.1":
+  version: 0.14.1
+  resolution: "@minatokens/token@npm:0.14.1"
+  dependencies:
+    tslib: "npm:^2.8.1"
+  peerDependencies:
+    "@minatokens/api": 0.14.1
+    "@minatokens/storage": 0.14.1
+    o1js: ^2.2.0
+  checksum: 10c0/f67b5e9ce0a9385f8e0f43fd62798c9fe403ddf30eb0336a3b80f387096897d2c17d1c3cdc9d72c54f90d8520ca778e725742d7ae78f7a97ce2219a1547fd4c3
+  languageName: node
+  linkType: hard
+
+"@minatokens/upgradable@npm:^0.14.1":
+  version: 0.14.1
+  resolution: "@minatokens/upgradable@npm:0.14.1"
   dependencies:
     mina-signer: "npm:^3.0.7"
     tslib: "npm:^2.8.1"
   peerDependencies:
-    "@minatokens/storage": 0.14.0
+    "@minatokens/storage": 0.14.1
     o1js: ^2.2.0
-  checksum: 10c0/fdf66669984ec07dec67cfcdaf40bf06751feb6770e27e11463eb996ad0543f8fd4634eb0d61b041add6a5c4f35589c83172877af4606f9e8af7646da9a36f7c
+  checksum: 10c0/7d38e53373f9dacd74a569acd3c26b5d3cbfe6504d9b88317315d6c3778f01026b0bec1dfc483aecf7c2ef7b1dfe6168f07a4fe0a86d7f55348c164889d0f216
   languageName: node
   linkType: hard
 
@@ -271,12 +285,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^22.10.2":
-  version: 22.10.2
-  resolution: "@types/node@npm:22.10.2"
+"@types/node@npm:^22.10.5":
+  version: 22.10.5
+  resolution: "@types/node@npm:22.10.5"
   dependencies:
     undici-types: "npm:~6.20.0"
-  checksum: 10c0/2c7b71a040f1ef5320938eca8ebc946e6905caa9bbf3d5665d9b3774a8d15ea9fab1582b849a6d28c7fc80756a62c5666bc66b69f42f4d5dafd1ccb193cdb4ac
+  checksum: 10c0/6a0e7d1fe6a86ef6ee19c3c6af4c15542e61aea2f4cee655b6252efb356795f1f228bc8299921e82924e80ff8eca29b74d9dd0dd5cc1a90983f892f740b480df
   languageName: node
   linkType: hard
 
@@ -441,18 +455,19 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "nft-standard-worker@workspace:."
   dependencies:
-    "@minatokens/api": "npm:^0.14.0"
-    "@minatokens/nft": "file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=0e03d5&locator=nft-standard-worker%40workspace%3A."
-    "@minatokens/storage": "npm:^0.14.0"
-    "@minatokens/upgradable": "npm:^0.14.0"
-    "@types/node": "npm:^22.10.2"
+    "@minatokens/api": "npm:^0.14.1"
+    "@minatokens/nft": "file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=951d8d&locator=nft-standard-worker%40workspace%3A."
+    "@minatokens/storage": "npm:^0.14.1"
+    "@minatokens/token": "npm:^0.14.1"
+    "@minatokens/upgradable": "npm:^0.14.1"
+    "@types/node": "npm:^22.10.5"
     algoliasearch: "npm:^5.18.0"
     dotenv: "npm:^16.4.7"
     o1js: "npm:2.2.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.7.2"
     unique-names-generator: "npm:^4.7.1"
-    zkcloudworker: "npm:^0.23.3"
+    zkcloudworker: "npm:^0.23.7"
   languageName: unknown
   linkType: soft
 
@@ -626,14 +641,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zkcloudworker@npm:^0.23.3":
-  version: 0.23.3
-  resolution: "zkcloudworker@npm:0.23.3"
+"zkcloudworker@npm:^0.23.7":
+  version: 0.23.7
+  resolution: "zkcloudworker@npm:0.23.7"
   dependencies:
     "@minatokens/api": "npm:^0.9.7"
     chalk: "npm:^4.1.2"
   peerDependencies:
     o1js: ^2.1.0
-  checksum: 10c0/ca181a046ae362f6fdc918469dbd89e9367086752dad7519d73d452ec15081675dbd9f073c82f4db2fb323d0e90d4377cc49009bfc9b0cc42977f5dff7b1de5e
+  checksum: 10c0/8b934e1e7c004618f5e91ac7e48e38ba01490b851426a5802591ea3f7016f3277dae72d4ecd7fddc37c4aa101a2c35de78495d4825156c16b51234375339e8b2
   languageName: node
   linkType: hard

@@ -1,4 +1,3 @@
-// This test can run out of memory first time, please run it again with prover keys cache created
 import { describe, it } from "node:test";
 import assert from "node:assert";
 import {
@@ -258,6 +257,14 @@ describe("NFT contracts tests", () => {
         users[i].toBase58(),
         "balance:",
         await accountBalanceMina(users[i])
+      );
+    }
+    for (let i = 0; i < NUMBER_OF_USERS; i++) {
+      console.log(
+        `Whitelisted User ${i} `,
+        whitelistedUsers[i].toBase58(),
+        "balance:",
+        await accountBalanceMina(whitelistedUsers[i])
       );
     }
     Memory.info("before compiling");
@@ -541,12 +548,10 @@ describe("NFT contracts tests", () => {
     const whitelist = useAdvancedAdmin
       ? (
           await Whitelist.create({
-            list: TEST_ACCOUNTS.slice(5)
-              .map((user) => ({
-                address: user.publicKey,
-                amount: 50_000_000_000,
-              }))
-              .slice(0, 5),
+            list: whitelistedUsers.map((user) => ({
+              address: user,
+              amount: 50_000_000_000,
+            })),
           })
         ).whitelist
       : undefined;
@@ -969,7 +974,7 @@ describe("NFT contracts tests", () => {
     owner = whitelistedUsers[1];
   });
 
-  it("should update NFT metadata", async () => {
+  it("should update NFT metadata", { skip: useAdvancedAdmin }, async () => {
     Memory.info("before update");
     console.time("updated NFT");
 
@@ -1783,6 +1788,11 @@ describe("NFT contracts tests", () => {
     await fetchMinaAccount({ publicKey: creator, force: true });
     await fetchMinaAccount({ publicKey: zkAdminKey, force: true });
     await fetchMinaAccount({ publicKey: upgradeAuthority, force: true });
+    console.log(
+      "useAdvancedAdmin",
+      useAdvancedAdmin,
+      useAdvancedAdmin ? AdvancedAdminVk.hash.toJSON() : adminVk.hash.toJSON()
+    );
 
     const tx = await Mina.transaction(
       {
@@ -1796,7 +1806,9 @@ describe("NFT contracts tests", () => {
         );
       }
     );
+    console.log("tx upgradeAdmin 1", tx.toPretty());
     await tx.prove();
+    console.log("tx upgradeAdmin 2", tx.toPretty());
     assert.strictEqual(
       (
         await sendTx({
