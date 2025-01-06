@@ -270,7 +270,7 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
       admin = TestPublicKey(keys[1].key);
       users = keys.slice(2);
     } else if (chain === "lightnet") {
-      const { keys } = await initBlockchain(chain, 7);
+      const { keys } = await initBlockchain(chain, NUMBER_OF_USERS + 2);
 
       faucet = TestPublicKey(keys[0].key);
       admin = TestPublicKey(keys[1].key);
@@ -306,7 +306,11 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
       )[] = [];
 
       for (const user of whitelistedUsers) {
-        await fetchMinaAccount({ publicKey: user, force: true });
+        await fetchMinaAccount({ publicKey: user, force: false });
+        const balance = await accountBalanceMina(user);
+        if (balance > 30) {
+          continue;
+        }
         const transaction = await Mina.transaction(
           {
             sender: users[0],
@@ -316,7 +320,7 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
           },
           async () => {
             const senderUpdate = AccountUpdate.createSigned(users[0]);
-            senderUpdate.balance.subInPlace(1000000000);
+            if (balance === 0) senderUpdate.balance.subInPlace(1000000000);
             senderUpdate.send({ to: user, amount: 100_000_000_000 });
           }
         );
@@ -887,9 +891,11 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
         : chain === "zeko"
         ? UInt32.zero
         : (await fetchLastBlock()).globalSlotSinceGenesis;
+    console.log("slot", slot.toBigint());
     const auctionEndTime = slot.add(
-      UInt32.from(chain === "local" ? 0 : shares ? 12 : 6)
+      UInt32.from((shares ? 20 : 10) * (chain === "lightnet" ? 2 : 1))
     );
+    console.log("auctionEndTime", auctionEndTime.toBigint());
 
     const tx = await Mina.transaction(
       {
@@ -1060,6 +1066,13 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
     const buyer = whitelistedUsers[2];
     await fetchMinaAccount({ publicKey: buyer, force: true });
     await fetchMinaAccount({ publicKey: zkAuctionKey, force: true });
+    const slot =
+      chain === "local"
+        ? Mina.currentSlot()
+        : chain === "zeko"
+        ? UInt32.zero
+        : (await fetchLastBlock()).globalSlotSinceGenesis;
+    console.log("slot", slot.toBigint());
 
     const nft = nftParams.find(
       (p) =>
@@ -1079,7 +1092,6 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
       },
       async () => {
         await auctionContract.bid(UInt64.from(15_000_000_000), buyer);
-        await tokenContract.approveAccountUpdate(auctionContract.self);
       }
     );
     await tx.prove();
@@ -1095,46 +1107,6 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
     console.timeEnd("bid NFT 1");
   });
 
-  it("should bid NFT (2)", { skip: shares }, async () => {
-    Memory.info("before bid 2");
-    console.time("bid NFT 2");
-    const buyer = whitelistedUsers[3];
-    await fetchMinaAccount({ publicKey: buyer, force: true });
-    await fetchMinaAccount({ publicKey: zkAuctionKey, force: true });
-
-    const nft = nftParams.find(
-      (p) =>
-        p.address.equals(zkNFTKey).toBoolean() &&
-        p.collection.equals(zkCollectionKey).toBoolean()
-    );
-    if (!nft) {
-      throw new Error("NFT not found");
-    }
-    const { name } = nft;
-
-    const tx = await Mina.transaction(
-      {
-        sender: buyer,
-        fee: 100_000_000,
-        memo: `Bid NFT (2) ${name}`.substring(0, 30),
-      },
-      async () => {
-        await auctionContract.bid(UInt64.from(20_000_000_000), buyer);
-      }
-    );
-    await tx.prove();
-    assert.strictEqual(
-      (
-        await sendTx({
-          tx: tx.sign([buyer.key]),
-          description: "bid 2",
-        })
-      )?.status,
-      expectedTxStatus
-    );
-    console.timeEnd("bid NFT 2");
-  });
-
   it("should bid NFT (2) with NFT Shares", { skip: !shares }, async () => {
     Memory.info("before bid 2");
     console.time("bid NFT 2 shares");
@@ -1144,9 +1116,16 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
     await fetchMinaAccount({ publicKey: zkSharesKey, force: true });
     const tokenId = tokenContract.deriveTokenId();
     await fetchMinaAccount({ publicKey: buyer, tokenId, force: true });
-    console.log("tokenId", tokenId);
+    console.log("tokenId", tokenId.toJSON());
     console.log("buyer", buyer.toBase58());
     console.log("zkTokenKey", zkTokenKey.toBase58());
+    const slot =
+      chain === "local"
+        ? Mina.currentSlot()
+        : chain === "zeko"
+        ? UInt32.zero
+        : (await fetchLastBlock()).globalSlotSinceGenesis;
+    console.log("slot", slot.toBigint());
 
     const outstandingShares = sharesOwnerContract.sharesOutstanding.get();
     console.log(
@@ -1170,25 +1149,139 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
 
     const tx = await Mina.transaction(
       {
-        sender: sharesAdmin,
+        sender: buyer,
         fee: 100_000_000,
         memo: `Bid with Shares NFT ${name}`.substring(0, 30),
       },
       async () => {
-        await sharesOwnerContract.bid(UInt64.from(20_000_000_000));
+        await sharesOwnerContract.bid(UInt64.from(17_000_000_000));
+        //await tokenContract.approveAccountUpdate(sharesOwnerContract.self);
       }
     );
     await tx.prove();
     assert.strictEqual(
       (
         await sendTx({
-          tx: tx.sign([sharesAdmin.key]),
+          tx: tx.sign([buyer.key]),
           description: "bid 2 shares",
         })
       )?.status,
       expectedTxStatus
     );
     console.timeEnd("bid NFT 2 shares");
+    await fetchMinaAccount({ publicKey: zkSharesKey, force: true });
+    console.log("Shares balance", await accountBalanceMina(zkSharesKey));
+  });
+
+  it("should bid NFT (3)", async () => {
+    Memory.info("before bid 3");
+    console.time("bid NFT 3");
+    const buyer = whitelistedUsers[4];
+    await fetchMinaAccount({ publicKey: buyer, force: true });
+    await fetchMinaAccount({ publicKey: zkAuctionKey, force: true });
+    const slot =
+      chain === "local"
+        ? Mina.currentSlot()
+        : chain === "zeko"
+        ? UInt32.zero
+        : (await fetchLastBlock()).globalSlotSinceGenesis;
+    console.log("slot", slot.toBigint());
+
+    const nft = nftParams.find(
+      (p) =>
+        p.address.equals(zkNFTKey).toBoolean() &&
+        p.collection.equals(zkCollectionKey).toBoolean()
+    );
+    if (!nft) {
+      throw new Error("NFT not found");
+    }
+    const { name } = nft;
+
+    const tx = await Mina.transaction(
+      {
+        sender: buyer,
+        fee: 100_000_000,
+        memo: `Bid NFT (3) ${name}`.substring(0, 30),
+      },
+      async () => {
+        await auctionContract.bid(UInt64.from(18_000_000_000), buyer);
+      }
+    );
+    await tx.prove();
+    assert.strictEqual(
+      (
+        await sendTx({
+          tx: tx.sign([buyer.key]),
+          description: "bid 3",
+        })
+      )?.status,
+      expectedTxStatus
+    );
+    console.timeEnd("bid NFT 3");
+  });
+
+  it("should bid NFT (4) with NFT Shares", { skip: !shares }, async () => {
+    Memory.info("before bid 4");
+    console.time("bid NFT 4 shares");
+    const buyer = whitelistedUsers[4];
+    await fetchMinaAccount({ publicKey: sharesAdmin, force: true });
+    await fetchMinaAccount({ publicKey: zkAuctionKey, force: true });
+    await fetchMinaAccount({ publicKey: zkSharesKey, force: true });
+    const tokenId = tokenContract.deriveTokenId();
+    await fetchMinaAccount({ publicKey: buyer, tokenId, force: true });
+    console.log("tokenId", tokenId.toJSON());
+    console.log("buyer", buyer.toBase58());
+    console.log("zkTokenKey", zkTokenKey.toBase58());
+    const slot =
+      chain === "local"
+        ? Mina.currentSlot()
+        : chain === "zeko"
+        ? UInt32.zero
+        : (await fetchLastBlock()).globalSlotSinceGenesis;
+    console.log("slot", slot.toBigint());
+
+    const outstandingShares = sharesOwnerContract.sharesOutstanding.get();
+    console.log(
+      "Outstanding shares",
+      outstandingShares.toBigInt() / 1_000_000_000n
+    );
+    const sharesBalance = Mina.getAccount(buyer, tokenId).balance;
+    console.log(
+      "User shares balance",
+      sharesBalance.toBigInt() / 1_000_000_000n,
+      `(${
+        (sharesBalance.toBigInt() * 100n) / outstandingShares.toBigInt()
+      }%, required min 25%)`
+    );
+    console.log(
+      "Shares balance in MINA",
+      await accountBalanceMina(zkSharesKey)
+    );
+    const balance = sharesOwnerContract.account.balance.get();
+    console.log("Shares balance", balance.toBigInt());
+
+    const tx = await Mina.transaction(
+      {
+        sender: buyer,
+        fee: 100_000_000,
+        memo: `Bid with Shares NFT ${name}`.substring(0, 30),
+      },
+      async () => {
+        await sharesOwnerContract.bid(UInt64.from(20_000_000_000));
+        //await tokenContract.approveAccountUpdate(sharesOwnerContract.self);
+      }
+    );
+    await tx.prove();
+    assert.strictEqual(
+      (
+        await sendTx({
+          tx: tx.sign([buyer.key]),
+          description: "bid 4 shares",
+        })
+      )?.status,
+      expectedTxStatus
+    );
+    console.timeEnd("bid NFT 4 shares");
     await fetchMinaAccount({ publicKey: zkSharesKey, force: true });
     console.log("Shares balance", await accountBalanceMina(zkSharesKey));
   });
@@ -1214,7 +1307,7 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
         : (await fetchLastBlock()).globalSlotSinceGenesis
     ).toBigint();
     console.log("slot", slot);
-    while (slot <= endSlot.toBigint()) {
+    while (slot <= endSlot.toBigint() + 1n) {
       if (chain === "local") {
         local.incrementGlobalSlot(withdraw ? 3500 : 100);
         slot += withdraw ? 3500n : 100n;
@@ -1271,7 +1364,7 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
       expectedTxStatus
     );
     console.timeEnd("settled auction");
-    owner = shares ? zkSharesKey : whitelistedUsers[3]; // The auction winner, not the user
+    owner = shares ? zkSharesKey : whitelistedUsers[4]; // The auction winner, not the user
 
     await fetchMinaAccount({ publicKey: zkNFTKey, tokenId, force: true });
     const zkNFT = new NFT(zkNFTKey, tokenId);
@@ -1297,6 +1390,13 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
     await fetchMinaAccount({ publicKey: zkNFTKey, tokenId, force: true });
     await fetchMinaAccount({ publicKey: zkAuctionKey, force: true });
     console.log("Auction balance", await accountBalanceMina(zkAuctionKey));
+    const slot =
+      chain === "local"
+        ? Mina.currentSlot()
+        : chain === "zeko"
+        ? UInt32.zero
+        : (await fetchLastBlock()).globalSlotSinceGenesis;
+    console.log("slot", slot.toBigint());
 
     const nft = nftParams.find(
       (p) =>
@@ -1359,6 +1459,13 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
     await fetchMinaAccount({ publicKey: zkNFTKey, tokenId, force: true });
     await fetchMinaAccount({ publicKey: zkAuctionKey, force: true });
     console.log("Auction balance", await accountBalanceMina(zkAuctionKey));
+    const slot =
+      chain === "local"
+        ? Mina.currentSlot()
+        : chain === "zeko"
+        ? UInt32.zero
+        : (await fetchLastBlock()).globalSlotSinceGenesis;
+    console.log("slot", slot.toBigint());
 
     const nft = nftParams.find(
       (p) =>
@@ -1409,6 +1516,13 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
     const auction = Auction.unpack(auctionData);
     const balance = auctionContract.account.balance.get();
     console.log("Auction balance", await accountBalanceMina(zkAuctionKey));
+    const slot =
+      chain === "local"
+        ? Mina.currentSlot()
+        : chain === "zeko"
+        ? UInt32.zero
+        : (await fetchLastBlock()).globalSlotSinceGenesis;
+    console.log("slot", slot.toBigint());
 
     const nft = nftParams.find(
       (p) =>

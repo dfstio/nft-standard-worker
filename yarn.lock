@@ -205,9 +205,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@minatokens/nft@file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=951d8d&locator=nft-standard-worker%40workspace%3A.":
+"@minatokens/nft@file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=cb5caf&locator=nft-standard-worker%40workspace%3A.":
   version: 0.14.1
-  resolution: "@minatokens/nft@file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=951d8d&locator=nft-standard-worker%40workspace%3A."
+  resolution: "@minatokens/nft@file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=cb5caf&locator=nft-standard-worker%40workspace%3A."
   dependencies:
     mina-signer: "npm:^3.0.7"
     tslib: "npm:^2.8.1"
@@ -216,7 +216,7 @@ __metadata:
     "@minatokens/token": 0.14.1
     "@minatokens/upgradable": 0.14.1
     o1js: ^2.2.0
-  checksum: 10c0/f5f1e94a6646dec5550bdb66d81ed931689bab6c495f0f1154a27e575aadea4b3377245a1d5f30900266c28b607523be1fd11742086b1b2a038e6ea0a97c8bd1
+  checksum: 10c0/eda288cb3202eea1cacc0e057a03ead65d4bf30a8ed2fbad2af47d79f3ed5a741a338f5b37be74df7ee308977de0e70cde61dfc3327b0f967343578b7314eb2b
   languageName: node
   linkType: hard
 
@@ -456,7 +456,7 @@ __metadata:
   resolution: "nft-standard-worker@workspace:."
   dependencies:
     "@minatokens/api": "npm:^0.14.1"
-    "@minatokens/nft": "file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=951d8d&locator=nft-standard-worker%40workspace%3A."
+    "@minatokens/nft": "file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=cb5caf&locator=nft-standard-worker%40workspace%3A."
     "@minatokens/storage": "npm:^0.14.1"
     "@minatokens/token": "npm:^0.14.1"
     "@minatokens/upgradable": "npm:^0.14.1"
@@ -467,7 +467,7 @@ __metadata:
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.7.2"
     unique-names-generator: "npm:^4.7.1"
-    zkcloudworker: "npm:^0.23.7"
+    zkcloudworker: "npm:^0.23.9"
   languageName: unknown
   linkType: soft
 
@@ -641,14 +641,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zkcloudworker@npm:^0.23.7":
-  version: 0.23.7
-  resolution: "zkcloudworker@npm:0.23.7"
+"zkcloudworker@npm:^0.23.9":
+  version: 0.23.9
+  resolution: "zkcloudworker@npm:0.23.9"
   dependencies:
     "@minatokens/api": "npm:^0.9.7"
     chalk: "npm:^4.1.2"
   peerDependencies:
     o1js: ^2.1.0
-  checksum: 10c0/8b934e1e7c004618f5e91ac7e48e38ba01490b851426a5802591ea3f7016f3277dae72d4ecd7fddc37c4aa101a2c35de78495d4825156c16b51234375339e8b2
+  checksum: 10c0/0d8a6696c671110618551bd79454468d1f7a0886c2a25829873bc0219a259ab5ca65805be94d39c5e12d521a528af94fba597509d2462b0df383dabad9068cd2
   languageName: node
   linkType: hard
