@@ -51,6 +51,8 @@ import {
   DefineOwnerFactory,
   OfferFactory,
   CollectionFactory,
+  NFTStandardUpdate,
+  NFTUpdateContractConstructor,
 } from "@minatokens/nft";
 import {
   VerificationKeyUpgradeAuthority,
@@ -102,17 +104,6 @@ const upgradeAuthorityContract = new VerificationKeyUpgradeAuthority(
   upgradeAuthority
 );
 
-// https://github.com/o1-labs/o1js/issues/1317 - issue with #private in SmartContract
-// is being fixed by using unknown as ...
-// const { Collection, Approval, Owner, Admin } = NonFungibleTokenContractsFactory(
-//   {
-//     approvalFactory: AuctionFactory as unknown as DefineApprovalFactory,
-//     adminContract: useAdvancedAdmin
-//       ? (NFTAdvancedAdmin as unknown as NFTAdminContractConstructor)
-//       : NFTAdmin,
-//   }
-// );
-
 export function AuctionContractsFactory(params: {
   useAdvancedAdmin: boolean;
   approval: "auction" | "shares";
@@ -121,6 +112,7 @@ export function AuctionContractsFactory(params: {
 
   let Collection: ReturnType<typeof CollectionFactory>;
   let Approval: NFTApprovalContractConstructor;
+  let Update: NFTUpdateContractConstructor;
   let Auction: ReturnType<typeof AuctionFactory>;
   let Admin = useAdvancedAdmin ? NFTAdvancedAdmin : NFTAdmin;
   let { NFTSharesAdmin, NFTSharesOwner, FungibleToken } = NFTSharesFactory({
@@ -139,6 +131,12 @@ export function AuctionContractsFactory(params: {
     }
     return Approval as unknown as NFTApprovalContractConstructor;
   }
+  function getUpdate(): NFTUpdateContractConstructor {
+    if (!Update) {
+      throw new Error("Update constructor not set up yet!");
+    }
+    return Update as unknown as NFTUpdateContractConstructor;
+  }
   function getOwner(): NFTOwnerContractConstructor {
     if (!NFTSharesOwner) {
       throw new Error("Owner constructor not set up yet!");
@@ -155,10 +153,13 @@ export function AuctionContractsFactory(params: {
       ? (Auction as unknown as NFTApprovalContractConstructor)
       : (NFTSharesOwner as unknown as NFTApprovalContractConstructor);
 
+  Update = NFTStandardUpdate;
+
   Collection = CollectionFactory({
     adminContract: () => Admin as unknown as NFTAdminContractConstructor,
     ownerContract: getOwner,
     approvalContract: getApproval,
+    updateContract: getUpdate,
   });
 
   return {
@@ -256,12 +257,6 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
         TestPublicKey.fromBase58(account.privateKey)
       );
     } else if (chain === "local") {
-      // local = await Mina.LocalBlockchain({
-      //   proofsEnabled: true,
-      // });
-      // Mina.setActiveInstance(local);
-      // const keys = local.testAccounts;
-
       const { keys } = await initBlockchain(chain, NUMBER_OF_USERS + 2);
       local = Mina.activeInstance as Awaited<
         ReturnType<typeof Mina.LocalBlockchain>
@@ -608,13 +603,14 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
     const {
       metadataRoot,
       ipfsHash,
-      serializedMap,
       name: nftName,
-      privateMetadata,
     } = await randomMetadata({
       includePrivateTraits: false,
       includeBanner: true,
     });
+    if (!ipfsHash) {
+      throw new Error("IPFS hash is undefined");
+    }
     name = nftName;
     const slot =
       chain === "local"
@@ -725,14 +721,11 @@ describe(`Auction contracts tests: ${chain} ${withdraw ? "withdraw " : ""}${
   it("should mint NFT", async () => {
     Memory.info("before mint");
     console.time("minted NFT");
-    const {
-      name,
-      ipfsHash,
-      metadataRoot,
-      privateMetadata,
-      serializedMap,
-      map,
-    } = await randomMetadata();
+    const { name, ipfsHash, metadataRoot, privateMetadata } =
+      await randomMetadata();
+    if (!ipfsHash) {
+      throw new Error("IPFS hash is undefined");
+    }
     nftParams.push({
       name,
       address: zkNFTKey,

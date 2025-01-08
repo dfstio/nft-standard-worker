@@ -36,31 +36,44 @@ const NUMBER_OF_TRAITS = 5;
 const NUMBER_OF_TREE_ENTRIES = 20;
 
 async function randomMetadata(
-  params: { includePrivateTraits?: boolean; includeBanner?: boolean } = {}
+  params: {
+    includePrivateTraits?: boolean;
+    includeBanner?: boolean;
+    pin?: boolean;
+  } = {}
 ): Promise<{
   name: string;
-  ipfsHash: string;
+  ipfsHash?: string;
   metadataRoot: Field;
   privateMetadata: string;
   serializedMap: IndexedMapSerialized;
-  map: Metadata;
+  metadata: Metadata;
   data: object;
 }> {
-  const { includePrivateTraits = true, includeBanner = false } = params;
+  const {
+    includePrivateTraits = true,
+    includeBanner = false,
+    pin = true,
+  } = params;
   const metadata = randomMap({ includePrivateTraits, includeBanner });
   const privateMetadata = JSON.stringify(metadata.toJSON(true), null, 2);
-  const ipfsHash = await pinJSON({
-    data: metadata.toJSON(false),
-    name: "metadata",
-  });
-  if (!ipfsHash) throw new Error("Failed to pin metadata");
+  let ipfsHash: string | undefined = undefined;
+  if (pin) {
+    ipfsHash = pin
+      ? await pinJSON({
+          data: metadata.toJSON(false),
+          name: "metadata",
+        })
+      : undefined;
+    if (!ipfsHash) throw new Error("Failed to pin metadata");
+  }
   return {
     name: metadata.name,
     ipfsHash,
     metadataRoot: metadata.map.root,
     privateMetadata,
     serializedMap: serializeIndexedMap(metadata.map),
-    map: metadata,
+    metadata,
     data: metadata.toJSON(false),
   };
 }

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
-import { Metadata, ColorPlugin } from "../src/metadata/index.js";
+import { Metadata, ColorPlugin } from "@minatokens/nft";
 import { randomMap, randomImage, randomMetadata } from "./helpers/metadata.js";
 import { algoliaWriteNFT } from "./helpers/algolia.js";
 import MinaSigner from "mina-signer";
@@ -10,7 +10,7 @@ const NUMBER_OF_ITERATIONS = 20;
 const printMetadata = false;
 
 describe("Test serializing and deserializing Metadata", () => {
-  it.skip("should serialize and deserialize Metadata with plugins", async () => {
+  it("should serialize and deserialize Metadata with plugins", async () => {
     const map = new Metadata({
       name: "test",
       image: randomImage(),
@@ -47,7 +47,7 @@ describe("Test serializing and deserializing Metadata", () => {
     });
     assert.deepStrictEqual(deserializedPrivate, map);
   });
-  it.skip("should serialize and deserialize Metadata", async () => {
+  it("should serialize and deserialize Metadata", async () => {
     for (let i = 0; i < NUMBER_OF_ITERATIONS; i++) {
       const map = randomMap();
       const serializedPublic = JSON.stringify(map.toJSON(false), null, 2);
@@ -65,7 +65,7 @@ describe("Test serializing and deserializing Metadata", () => {
       assert.deepStrictEqual(deserializedPrivate, map);
     }
   });
-  it("should write metadata to Algolia", async () => {
+  it.skip("should write metadata to Algolia", async () => {
     const collection = minaSigner.genKeys();
     const nft = minaSigner.genKeys();
     const { data } = await randomMetadata();

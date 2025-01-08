@@ -7,6 +7,7 @@ export function processArguments(): {
   noLog: boolean;
   approveTransfer: boolean;
   shares: boolean;
+  readOnly: boolean;
 } {
   const chainName = process.env.CHAIN ?? "local";
   const useAdvancedAdmin = process.env.ADVANCED ?? "false";
@@ -14,6 +15,7 @@ export function processArguments(): {
   const noLog = process.env.NO_LOG ?? "false";
   const approveTransfer = process.env.APPROVE_TRANSFER ?? "false";
   const shares = process.env.SHARES ?? "false";
+  const readOnly = process.env.READ_ONLY ?? "false";
   if (
     chainName !== "local" &&
     chainName !== "devnet" &&
@@ -29,5 +31,6 @@ export function processArguments(): {
     noLog: noLog === "true",
     approveTransfer: approveTransfer === "true",
     shares: shares === "true",
+    readOnly: readOnly === "true",
   };
 }

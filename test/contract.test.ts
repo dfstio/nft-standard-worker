@@ -1,4 +1,4 @@
-import { describe, it } from "node:test";
+import { afterEach, beforeEach, describe, it } from "node:test";
 import assert from "node:assert";
 import {
   Mina,
@@ -33,7 +33,6 @@ import {
   CollectionData,
   fieldFromString,
   NFTData,
-  NFTImmutableState,
   NFTState,
   NFTUpdateProof,
   NFTStateStruct,
@@ -44,15 +43,15 @@ import {
   BidFactory,
   NFTAddress,
   Bid,
-  NFTOraclePreconditions,
   UInt64Option,
   OfferFactory,
   AdminData,
   NonFungibleTokenContractsFactory,
-  NFTStandardOwner,
   DefineApprovalFactory,
   NFTCollectionContractConstructor,
   NFTAdminContractConstructor,
+  TransferParams,
+  NFTTransactionContext,
 } from "@minatokens/nft";
 import {
   VerificationKeyUpgradeAuthority,
@@ -75,9 +74,8 @@ import { processArguments } from "./helpers/utils.js";
 import { checkValidatorsList } from "./helpers/validators.js";
 import { randomMetadata } from "./helpers/metadata.js";
 import { Whitelist, Storage, OffChainList } from "@minatokens/storage";
-import fs from "fs/promises";
 
-let { chain, useAdvancedAdmin, proofsEnabled } = processArguments();
+let { chain, useAdvancedAdmin, approveTransfer, noLog } = processArguments();
 const networkId = chain === "mainnet" ? "mainnet" : "devnet";
 const expectedTxStatus = chain === "zeko" ? "pending" : "included";
 const vk = nftVerificationKeys[networkId].vk;
@@ -106,14 +104,12 @@ const upgradeAuthorityContract = new VerificationKeyUpgradeAuthority(
 
 // https://github.com/o1-labs/o1js/issues/1317 - issue with #private in SmartContract
 // is being fixed by using unknown as ...
-const { Collection, Approval, Owner, Admin } = NonFungibleTokenContractsFactory(
-  {
-    approvalFactory: OfferFactory as unknown as DefineApprovalFactory,
-    adminContract: useAdvancedAdmin
-      ? (NFTAdvancedAdmin as unknown as NFTAdminContractConstructor)
-      : NFTAdmin,
-  }
-);
+const { Collection, Approval } = NonFungibleTokenContractsFactory({
+  approvalFactory: OfferFactory as unknown as DefineApprovalFactory,
+  adminContract: useAdvancedAdmin
+    ? (NFTAdvancedAdmin as unknown as NFTAdminContractConstructor)
+    : NFTAdmin,
+});
 
 const NonFungibleTokenBidContract = BidFactory({
   collectionContract: () =>
@@ -157,7 +153,20 @@ interface NFTParams {
 
 const nftParams: NFTParams[] = [];
 
-describe("NFT contracts tests", () => {
+describe(`NFT contracts tests: ${chain} ${useAdvancedAdmin ? "advanced " : ""}${
+  approveTransfer ? "approve " : ""
+}${noLog ? "noLog" : ""}`, () => {
+  const originalConsoleLog = console.log;
+  if (noLog) {
+    beforeEach(() => {
+      console.log = () => {};
+    });
+
+    afterEach(() => {
+      console.log = originalConsoleLog;
+    });
+  }
+
   it("should initialize a blockchain", async () => {
     if (chain === "devnet" || chain === "zeko" || chain === "mainnet") {
       await initBlockchain(chain);
@@ -171,7 +180,7 @@ describe("NFT contracts tests", () => {
       admin = TestPublicKey(keys[1].key);
       users = keys.slice(2);
     } else if (chain === "lightnet") {
-      const { keys } = await initBlockchain(chain, 7);
+      const { keys } = await initBlockchain(chain, NUMBER_OF_USERS + 2);
 
       faucet = TestPublicKey(keys[0].key);
       admin = TestPublicKey(keys[1].key);
@@ -205,6 +214,11 @@ describe("NFT contracts tests", () => {
 
       for (const user of whitelistedUsers) {
         await fetchMinaAccount({ publicKey: user, force: true });
+        const balance = await accountBalanceMina(user);
+        if (balance > 30) {
+          continue;
+        }
+
         const transaction = await Mina.transaction(
           {
             sender: users[0],
@@ -214,7 +228,7 @@ describe("NFT contracts tests", () => {
           },
           async () => {
             const senderUpdate = AccountUpdate.createSigned(users[0]);
-            senderUpdate.balance.subInPlace(1000000000);
+            if (balance === 0) senderUpdate.balance.subInPlace(1000000000);
             senderUpdate.send({ to: user, amount: 100_000_000_000 });
           }
         );
@@ -523,6 +537,9 @@ describe("NFT contracts tests", () => {
         includePrivateTraits: false,
         includeBanner: true,
       });
+    if (!ipfsHash) {
+      throw new Error("IPFS hash is undefined");
+    }
     collectionName = name;
     const slot =
       chain === "local"
@@ -572,13 +589,13 @@ describe("NFT contracts tests", () => {
             admin: creator,
             upgradeAuthority,
             whitelist,
-            uri: `zkcloudworker@$0.20.0#AdvancedAdminContract`,
+            uri: `AdvancedAdminContract`,
             adminData: AdminData.new(),
           });
         } else if (adminContract instanceof NFTAdmin) {
           await adminContract.deploy({
             admin: creator,
-            uri: `zkcloudworker@0.18.29#AdminContract`,
+            uri: `AdminContract`,
           });
         } else {
           throw new Error("Admin contract is not supported");
@@ -595,7 +612,7 @@ describe("NFT contracts tests", () => {
         await collectionContract.initialize(
           masterNFT,
           CollectionData.new({
-            requireTransferApproval: false,
+            requireTransferApproval: approveTransfer,
             royaltyFee: 10, // 10%
             transferFee: 1_000_000_000, // 1 MINA
           })
@@ -623,14 +640,11 @@ describe("NFT contracts tests", () => {
   it("should mint NFT", async () => {
     Memory.info("before mint");
     console.time("minted NFT");
-    const {
-      name,
-      ipfsHash,
-      metadataRoot,
-      privateMetadata,
-      serializedMap,
-      map,
-    } = await randomMetadata();
+    const { name, ipfsHash, metadataRoot, privateMetadata } =
+      await randomMetadata();
+    if (!ipfsHash) {
+      throw new Error("IPFS hash is undefined");
+    }
     nftParams.push({
       name,
       address: zkNFTKey,
@@ -707,10 +721,6 @@ describe("NFT contracts tests", () => {
     await fetchMinaAccount({ publicKey: zkCollectionKey, force: true });
     await fetchMinaAccount({ publicKey: zkAdminKey, force: true });
     await fetchMinaAccount({ publicKey: zkNFTKey, tokenId, force: true });
-    // const requireOfferApproval = CollectionData.unpack(
-    //   collectionContract.packedData.get()
-    // ).requireOfferApproval.toBoolean();
-    // console.log("requireOfferApproval", requireOfferApproval);
     const nft = nftParams.find(
       (p) =>
         p.address.equals(zkNFTKey).toBoolean() &&
@@ -771,10 +781,6 @@ describe("NFT contracts tests", () => {
     await fetchMinaAccount({ publicKey: zkAdminKey, force: true });
     await fetchMinaAccount({ publicKey: zkNFTKey, tokenId, force: true });
     await fetchMinaAccount({ publicKey: zkOfferKey, force: true });
-    // const requireBuyApproval = CollectionData.unpack(
-    //   collectionContract.packedData.get()
-    // ).requireBuyApproval.toBoolean();
-    // console.log("requireBuyApproval", requireBuyApproval);
     const nft = nftParams.find(
       (p) =>
         p.address.equals(zkNFTKey).toBoolean() &&
@@ -796,7 +802,6 @@ describe("NFT contracts tests", () => {
       }
     );
     await tx.prove();
-    //console.log("tx", tx.toPretty());
     assert.strictEqual(
       (
         await sendTx({
@@ -926,6 +931,10 @@ describe("NFT contracts tests", () => {
     await fetchMinaAccount({ publicKey: zkAdminKey, force: true });
     await fetchMinaAccount({ publicKey: zkNFTKey, tokenId, force: true });
     await fetchMinaAccount({ publicKey: zkBidKey, force: true });
+    const requireTransferApproval = CollectionData.unpack(
+      collectionContract.packedData.get()
+    ).requireTransferApproval.toBoolean();
+    console.log("requireTransferApproval", requireTransferApproval);
     const nft = nftParams.find(
       (p) =>
         p.address.equals(zkNFTKey).toBoolean() &&
@@ -948,18 +957,13 @@ describe("NFT contracts tests", () => {
         memo: `Accept bid on NFT ${name}`.substring(0, 30),
       },
       async () => {
-        await bidContract.sell(nftAddress, price);
+        if (requireTransferApproval)
+          await bidContract.approvedSell(nftAddress, price);
+        else await bidContract.sell(nftAddress, price);
       }
     );
     await tx.prove();
-    // console.log("tx", tx.toPretty());
-    // await fs.writeFile("tx.json", JSON.stringify(tx.toJSON(), null, 2));
-    // console.log("Seller", seller.toBase58());
-    // console.log("bid contract", zkBidKey.toBase58());
-    // console.log("nft", zkNFTKey.toBase58());
-    // console.log("collection", zkCollectionKey.toBase58());
-    // console.log("price", price.toString());
-    // console.log("admin", zkAdminKey.toBase58());
+
     assert.strictEqual(
       (
         await sendTx({
@@ -993,7 +997,6 @@ describe("NFT contracts tests", () => {
       creator: creator,
       address: zkNFTKey,
       tokenId,
-      oracle: NFTOraclePreconditions.new(),
     });
 
     const index = nftParams.findIndex(
@@ -1088,10 +1091,11 @@ describe("NFT contracts tests", () => {
       }
     );
     await tx.prove();
+    const txSigned = tx.sign([owner.key]);
     assert.strictEqual(
       (
         await sendTx({
-          tx: tx.sign([owner.key]),
+          tx: txSigned,
           description: "update",
         })
       )?.status,
@@ -1127,45 +1131,6 @@ describe("NFT contracts tests", () => {
     }
     const { name } = nft;
 
-    // let success = true;
-    // try {
-    //   const tx = await Mina.transaction(
-    //     {
-    //       sender: owner,
-    //       fee: 100_000_000,
-    //       memo: `Transfer NFT ${name}`.substring(0, 30),
-    //     },
-    //     async () => {
-    //       if (!requireTransferApproval) {
-    //         await collectionContract.transferBySignature(
-    //           zkNFTKey,
-    //           to,
-    //           UInt64Option.none()
-    //         );
-    //       } else {
-    //         await collectionContract.transferBySignature(
-    //           zkNFTKey,
-    //           to,
-    //           UInt64Option.none()
-    //         );
-    //       }
-    //     }
-    //   );
-    //   await tx.prove();
-    //   await sendTx({
-    //     tx: tx.sign([owner.key]),
-    //     description: "transfer attempt",
-    //   });
-    // } catch (e: any) {
-    //   success = false;
-    //   console.error(
-    //     `Attempt to transfer NFT with wrong approval failed: ${
-    //       e?.message ?? ""
-    //     }`
-    //   );
-    // }
-    // assert.strictEqual(success, false);
-
     const tx = await Mina.transaction(
       {
         sender: owner,
@@ -1174,16 +1139,24 @@ describe("NFT contracts tests", () => {
       },
       async () => {
         if (requireTransferApproval) {
-          await collectionContract.transferBySignature(
-            zkNFTKey,
-            to,
-            UInt64Option.none()
+          await collectionContract.approvedTransferBySignature(
+            new TransferParams({
+              address: zkNFTKey,
+              from: owner,
+              to,
+              price: UInt64Option.none(),
+              context: NFTTransactionContext.empty(),
+            })
           );
         } else {
           await collectionContract.transferBySignature(
-            zkNFTKey,
-            to,
-            UInt64Option.none()
+            new TransferParams({
+              address: zkNFTKey,
+              from: owner,
+              to,
+              price: UInt64Option.none(),
+              context: NFTTransactionContext.empty(),
+            })
           );
         }
       }
@@ -1273,16 +1246,24 @@ describe("NFT contracts tests", () => {
         },
         async () => {
           if (requireTransferApproval) {
-            await collectionContract.transferBySignature(
-              zkNFTKey,
-              to,
-              UInt64Option.none()
+            await collectionContract.approvedTransferBySignature(
+              new TransferParams({
+                address: zkNFTKey,
+                from: owner,
+                to,
+                price: UInt64Option.none(),
+                context: NFTTransactionContext.empty(),
+              })
             );
           } else {
             await collectionContract.transferBySignature(
-              zkNFTKey,
-              to,
-              UInt64Option.none()
+              new TransferParams({
+                address: zkNFTKey,
+                from: owner,
+                to,
+                price: UInt64Option.none(),
+                context: NFTTransactionContext.empty(),
+              })
             );
           }
         }
@@ -1373,16 +1354,24 @@ describe("NFT contracts tests", () => {
       },
       async () => {
         if (requireTransferApproval) {
-          await collectionContract.transferBySignature(
-            zkNFTKey,
-            to,
-            UInt64Option.none()
+          await collectionContract.approvedTransferBySignature(
+            new TransferParams({
+              address: zkNFTKey,
+              from: owner,
+              to,
+              price: UInt64Option.none(),
+              context: NFTTransactionContext.empty(),
+            })
           );
         } else {
           await collectionContract.transferBySignature(
-            zkNFTKey,
-            to,
-            UInt64Option.none()
+            new TransferParams({
+              address: zkNFTKey,
+              from: owner,
+              to,
+              price: UInt64Option.none(),
+              context: NFTTransactionContext.empty(),
+            })
           );
         }
       }
@@ -1462,16 +1451,24 @@ describe("NFT contracts tests", () => {
         },
         async () => {
           if (requireTransferApproval) {
-            await collectionContract.transferBySignature(
-              zkNFTKey,
-              to,
-              UInt64Option.none()
+            await collectionContract.approvedTransferBySignature(
+              new TransferParams({
+                address: zkNFTKey,
+                from: owner,
+                to,
+                price: UInt64Option.none(),
+                context: NFTTransactionContext.empty(),
+              })
             );
           } else {
             await collectionContract.transferBySignature(
-              zkNFTKey,
-              to,
-              UInt64Option.none()
+              new TransferParams({
+                address: zkNFTKey,
+                from: owner,
+                to,
+                price: UInt64Option.none(),
+                context: NFTTransactionContext.empty(),
+              })
             );
           }
         }
@@ -1806,9 +1803,7 @@ describe("NFT contracts tests", () => {
         );
       }
     );
-    console.log("tx upgradeAdmin 1", tx.toPretty());
     await tx.prove();
-    console.log("tx upgradeAdmin 2", tx.toPretty());
     assert.strictEqual(
       (
         await sendTx({
@@ -1851,16 +1846,24 @@ describe("NFT contracts tests", () => {
       },
       async () => {
         if (requireTransferApproval) {
-          await collectionContract.transferBySignature(
-            zkNFTKey,
-            to,
-            UInt64Option.none()
+          await collectionContract.approvedTransferBySignature(
+            new TransferParams({
+              address: zkNFTKey,
+              from: owner,
+              to,
+              price: UInt64Option.none(),
+              context: NFTTransactionContext.empty(),
+            })
           );
         } else {
           await collectionContract.transferBySignature(
-            zkNFTKey,
-            to,
-            UInt64Option.none()
+            new TransferParams({
+              address: zkNFTKey,
+              from: owner,
+              to,
+              price: UInt64Option.none(),
+              context: NFTTransactionContext.empty(),
+            })
           );
         }
       }
