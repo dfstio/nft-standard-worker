@@ -15,16 +15,23 @@
     "local:auction:shares": "CHAIN=local CLOUD=local SHARES=true APPROVE_TRANSFER=true ADVANCED=true NO_LOG=false yarn test test/auction.test.ts",
     "devnet:auction:withdraw": "CHAIN=devnet CLOUD=local WITHDRAW=true APPROVE_TRANSFER=true SHARES=true NO_LOG=false yarn test test/auction.test.ts",
     "devnet:auction:shares": "CHAIN=devnet CLOUD=local SHARES=true APPROVE_TRANSFER=true ADVANCED=true NO_LOG=false yarn test test/auction.test.ts",
-    "devnet:auction": "CHAIN=devnet CLOUD=local yarn test test/auction.test.ts",
+    "devnet:auction": "CHAIN=devnet CLOUD=local ADVANCED=true WITHDRAW=false APPROVE_TRANSFER=true SHARES=false yarn test test/auction.test.ts",
     "lightnet:auction": "CHAIN=lightnet CLOUD=local WITHDRAW=true APPROVE_TRANSFER=true SHARES=true yarn test test/auction.test.ts",
     "zeko:auction": "CHAIN=zeko CLOUD=local yarn test test/auction.test.ts",
-    "devnet:auction:advanced": "CHAIN=devnet CLOUD=local ADVANCED=true yarn test test/auction.test.ts",
     "devnet:advanced": "CHAIN=devnet CLOUD=local ADVANCED=true yarn test test/contract.test.ts",
     "zeko": "CHAIN=zeko CLOUD=local ADVANCED=false yarn test test/contract.test.ts",
     "zeko:advanced": "CHAIN=zeko CLOUD=local ADVANCED=true yarn test test/contract.test.ts",
+    "local:zkprogram": "CHAIN=local CLOUD=local READ_ONLY=false yarn test test/zkprogram.test.ts",
     "local:auction:matrix": "CHAIN=local sh auction.zsh",
     "devnet:auction:matrix": "CHAIN=devnet sh auction.zsh",
-    "lightnet:auction:matrix": "CHAIN=lightnet sh auction.zsh"
+    "devnet:auction:rerun": "CHAIN=devnet RERUN=11 sh auction.zsh",
+    "lightnet:auction:matrix": "CHAIN=lightnet sh auction.zsh",
+    "local:contract:matrix": "CHAIN=local sh contract.zsh",
+    "devnet:contract:matrix": "CHAIN=devnet sh contract.zsh",
+    "lightnet:contract:matrix": "CHAIN=lightnet sh contract.zsh",
+    "local:zkprogram:matrix": "CHAIN=local sh zkprogram.zsh",
+    "devnet:zkprogram:matrix": "CHAIN=devnet sh zkprogram.zsh",
+    "lightnet:zkprogram:matrix": "CHAIN=lightnet sh zkprogram.zsh"
   },
   "node": {
     "version": ">=20.0.0"
@@ -38,13 +45,13 @@
   "packageManager": "yarn@4.5.3",
   "dependencies": {
     "@minatokens/api": "^0.14.1",
-    "@minatokens/nft": "file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=cb5caf&locator=nft-standard-worker%40workspace%3A.",
+    "@minatokens/nft": "file:../../zkcloudworker/minatokens-lib/packages/nft#../../zkcloudworker/minatokens-lib/packages/nft::hash=9f71a3&locator=nft-standard-worker%40workspace%3A.",
     "@minatokens/storage": "^0.14.1",
     "@minatokens/token": "^0.14.1",
     "@minatokens/upgradable": "^0.14.1",
-    "algoliasearch": "^5.18.0",
+    "algoliasearch": "^5.19.0",
     "o1js": "2.2.0",
     "unique-names-generator": "^4.7.1",
-    "zkcloudworker": "^0.23.9"
+    "zkcloudworker": "^0.23.11"
   }
 }

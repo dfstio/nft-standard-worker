@@ -3,11 +3,7 @@ import assert from "node:assert";
 import { UInt32, Bool, UInt64, PrivateKey, PublicKey, Field } from "o1js";
 import { NFTData, CollectionData, AdminData } from "@minatokens/nft";
 import { Storage } from "@minatokens/storage";
-import {
-  UpgradeDatabaseState,
-  UpgradeDatabaseStatePacked,
-  PublicKeyOption,
-} from "@minatokens/upgradable";
+import { UpgradeDatabaseState, PublicKeyOption } from "@minatokens/upgradable";
 
 const NUMBER_OF_ITERATIONS = 1000;
 const randomBool = () => Math.random() < 0.5;
