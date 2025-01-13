@@ -9,6 +9,7 @@
     "local:contract": "CHAIN=local CLOUD=local ADVANCED=false yarn test test/contract.test.ts",
     "devnet:contract": "CHAIN=devnet CLOUD=local ADVANCED=false yarn test test/contract.test.ts",
     "lightnet:contract": "CHAIN=lightnet CLOUD=local ADVANCED=false yarn test test/contract.test.ts",
+    "zeko:contract": "CHAIN=zeko CLOUD=local ADVANCED=false yarn test test/contract.test.ts",
     "local:auction": "CHAIN=local CLOUD=local SHARES=true WITHDRAW=false APPROVE_TRANSFER=true ADVANCED=true NO_LOG=false yarn test test/auction.test.ts",
     "devnet:auction": "CHAIN=devnet CLOUD=local SHARES=true WITHDRAW=false APPROVE_TRANSFER=true ADVANCED=true NO_LOG=false yarn test test/auction.test.ts",
     "lightnet:auction": "CHAIN=lightnet CLOUD=local SHARES=true WITHDRAW=false APPROVE_TRANSFER=true ADVANCED=true NO_LOG=false yarn test test/auction.test.ts",
