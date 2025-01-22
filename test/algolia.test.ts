@@ -13,67 +13,78 @@ import {
   fieldToString,
   CollectionData,
 } from "@minatokens/nft";
-import { PublicKey, TokenId } from "o1js";
-import { fetchMinaAccount, initBlockchain } from "zkcloudworker";
+import { PublicKey, TokenId, Mina } from "o1js";
+import { fetchMinaAccount, initBlockchain, sleep } from "zkcloudworker";
 import { processArguments } from "./helpers/utils.js";
 import { createIpfsURL } from "@minatokens/storage";
 
 const { chain } = processArguments();
 
-const collectionAddress =
-  "B62qk8ibS4FcSSSduJvkYcNFPAETbW36yk865ypiCeKHwoeLR2tsc1A";
-//"B62qmEJG4kpCWNLStGJtvAmJKeKmUovnFvaZhvQmwcyaW6ASN2EyC6K";
-const nftAddress: string[] = [];
-const data: NFTDataSerialized[] = [];
-let collectionData: CollectionDataSerialized;
+const collectionAddresses: string[] = [
+  "B62qkhsLDWs1juimpkvj7DJokLuNkfTwBkUekpN2MxKTjgMqntWyAWT",
+  "B62qpqba9DS37GQUD6ftixCpYpZSFvvef1hC4LQphpCWVyJrVb2jTRU",
+  "B62qk8ibS4FcSSSduJvkYcNFPAETbW36yk865ypiCeKHwoeLR2tsc1A",
+  "B62qmEJG4kpCWNLStGJtvAmJKeKmUovnFvaZhvQmwcyaW6ASN2EyC6K",
+  "B62qjss762qWFkcxv9UdmTyhTTBpkGoJHXtkBMiWTzQQeRWs3mE6S2U",
+  "B62qmPKTEcQ3mv9vbmFJjDrpqCtpJmeKNoaRHXvtctzFsp2RLkm3Kkh",
+];
+const nfts: NFTDataSerialized[] = [];
+const collections: CollectionDataSerialized[] = [];
 
 describe("Algolia", () => {
   it("should get collection data", async () => {
     await initBlockchain(chain);
-    await fetchMinaAccount({ publicKey: collectionAddress, force: true });
-    const collection = new Collection(PublicKey.fromBase58(collectionAddress));
-    const events = await collection.fetchEvents();
-    console.log("NFTs:", events.filter((e) => e.type === "mint").length);
-    const tokenId = collection.deriveTokenId();
-    const collectionDataResult = await getCollectionData({
-      collection: collectionAddress,
-    });
-    if (!collectionDataResult) {
-      throw new Error("Failed to get collection data");
-    }
-    collectionData = collectionDataResult;
-    for (const event of events) {
-      if (event.type === "mint") {
-        if (event.event.data instanceof MintEvent) {
-          const mintEvent: MintEvent = event.event.data;
-          const address = mintEvent.address.toBase58();
-          if (address !== collectionAddress) {
-            nftAddress.push(address);
-            const nftData = await getNFTData({
-              address,
-              collection: collectionAddress,
-              collectionName: collectionData.collectionName,
-            });
-            if (nftData) {
-              data.push(nftData);
-            } else throw new Error(`Failed to get NFT data for ${address}`);
+    for (const collectionAddress of collectionAddresses) {
+      await fetchMinaAccount({ publicKey: collectionAddress, force: true });
+      const collection = new Collection(
+        PublicKey.fromBase58(collectionAddress)
+      );
+      const events = await collection.fetchEvents();
+      console.log(
+        `${collectionAddress} NFTs:`,
+        events.filter((e) => e.type === "mint").length
+      );
+      const collectionDataResult = await getCollectionData({
+        collection: collectionAddress,
+      });
+      if (!collectionDataResult) {
+        throw new Error("Failed to get collection data");
+      }
+      collections.push(collectionDataResult);
+      for (const event of events) {
+        if (event.type === "mint") {
+          if (event.event.data instanceof MintEvent) {
+            const mintEvent: MintEvent = event.event.data;
+            const address = mintEvent.address.toBase58();
+            if (address !== collectionAddress) {
+              const nftData = await getNFTData({
+                address,
+                collection: collectionAddress,
+                collectionName: collectionDataResult.collectionName,
+                symbol: collectionDataResult.symbol,
+                uri: collectionDataResult.uri,
+                adminAddress: collectionDataResult.adminAddress,
+              });
+              if (nftData) {
+                nfts.push(nftData);
+              } else throw new Error(`Failed to get NFT data for ${address}`);
+            }
+          } else {
+            throw new Error("Event data is not a MintEvent");
           }
-        } else {
-          throw new Error("Event data is not a MintEvent");
         }
       }
     }
-    console.log("NFTs:", nftAddress);
   });
 
   it("should write metadata to Algolia", async () => {
-    if (!collectionData) {
-      throw new Error("Collection data not found");
+    console.time("NFT data updated");
+    for (const collection of collections) await algoliaWriteNFT(collection);
+    for (const nft of nfts) {
+      await algoliaWriteNFT(nft);
+      await sleep(1000);
     }
-    await algoliaWriteNFT(collectionData);
-    for (let i = 0; i < nftAddress.length; i++) {
-      await algoliaWriteNFT(data[i]);
-    }
+    console.timeEnd("NFT data updated");
   });
 });
 
@@ -81,6 +92,9 @@ async function getNFTData(params: {
   address: string;
   collection: string;
   collectionName: string;
+  symbol: string;
+  uri: string;
+  adminAddress: string;
 }): Promise<NFTDataSerialized | undefined> {
   try {
     const address = PublicKey.fromBase58(params.address);
@@ -164,9 +178,13 @@ class NFTData extends Struct({
     }
     const nftData: NFTDataSerialized = {
       type: "nft",
-      address: address.toBase58(),
+      tokenAddress: address.toBase58(),
       collectionName: params.collectionName,
       collectionAddress: params.collection,
+      symbol: params.symbol,
+      uri: params.uri,
+      adminAddress: params.adminAddress,
+      tokenId: TokenId.toBase58(tokenId),
       name,
       image: metadata.image,
       description: metadata.description,
@@ -192,6 +210,11 @@ class NFTData extends Struct({
       requireOwnerAuthorizationToUpgrade:
         data.requireOwnerAuthorizationToUpgrade.toBoolean(),
       metadata,
+      status: "created",
+      rating: 100,
+      created: Date.now(),
+      updated: Date.now(),
+      chain,
     };
     return nftData;
   } catch (error) {
@@ -209,7 +232,7 @@ async function getCollectionData(params: {
     const collection = new Collection(address);
     const collectionName = fieldToString(collection.collectionName.get());
     const creator = collection.creator.get().toBase58();
-    const admin = collection.admin.get().toBase58();
+    const adminAddress = collection.admin.get().toBase58();
     const data = CollectionData.unpack(collection.packedData.get());
     const baseURL = collection.baseURL.get().toString();
     const royaltyFee = Number(data.royaltyFee.toBigint());
@@ -217,10 +240,23 @@ async function getCollectionData(params: {
     const requireTransferApproval = data.requireTransferApproval.toBoolean();
     const mintingIsLimited = data.mintingIsLimited.toBoolean();
     const collectionIsPaused = data.isPaused.toBoolean();
+    const uri = Mina.getAccount(address).zkapp?.zkappUri;
+    if (!uri) {
+      console.error("No uri found in collection");
+      return undefined;
+    }
+    const symbol = Mina.getAccount(address).tokenSymbol;
+    if (!symbol) {
+      console.error("No symbol found in collection");
+      return undefined;
+    }
     const nftData = await getNFTData({
       address: params.collection,
       collection: params.collection,
       collectionName,
+      symbol,
+      uri,
+      adminAddress,
     });
     if (!nftData) {
       console.error("Failed to get Master NFT data");
@@ -235,9 +271,11 @@ async function getCollectionData(params: {
       ...nftData,
       type: "collection",
       collectionName,
+      symbol,
+      uri,
       banner,
       creator,
-      admin,
+      adminAddress,
       baseURL,
       royaltyFee,
       transferFee,

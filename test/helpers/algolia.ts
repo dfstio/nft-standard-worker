@@ -5,9 +5,13 @@ const chain = "devnet";
 
 export interface NFTDataSerialized {
   type: "nft" | "collection";
-  address: string;
+  tokenAddress: string;
   collectionName: string;
   collectionAddress: string;
+  symbol: string;
+  uri: string;
+  tokenId: string;
+  adminAddress: string;
   name: string;
   image: string;
   description?: string;
@@ -29,13 +33,21 @@ export interface NFTDataSerialized {
   isPaused: boolean;
   requireOwnerAuthorizationToUpgrade: boolean;
   metadata: object;
+  status: string;
+  rating: number;
+  updated: number;
+  created: number;
+  chain: string;
+  price?: number;
+  likes?: number;
+  like?: boolean;
 }
 
 export interface CollectionDataSerialized extends NFTDataSerialized {
   type: "collection";
   banner?: string;
   creator: string;
-  admin: string;
+  adminAddress: string;
   baseURL: string;
   royaltyFee: number;
   transferFee: string;
@@ -53,11 +65,14 @@ export async function algoliaWriteNFT(
   try {
     const client = algoliasearch(ALGOLIA_PROJECT, ALGOLIA_KEY);
     const indexName = `standard-${chain}`;
-    console.log("algoliaWriteToken", info.name, indexName);
+    const objectID =
+      info.collectionAddress +
+      (info.type === "nft" ? "." + info.tokenAddress : "");
+    //console.log("objectID", objectID);
+    console.log("NFT", info.name, indexName, objectID);
 
     const data = {
-      objectID:
-        info.collectionAddress + info.type === "nft" ? "." + info.address : "",
+      objectID,
       ...info,
     };
 

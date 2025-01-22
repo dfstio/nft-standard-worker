@@ -34,7 +34,7 @@ import { processArguments } from "./helpers/utils.js";
 import { randomMetadata } from "./helpers/metadata.js";
 
 let { chain, approveTransfer, noLog } = processArguments();
-const NUMBER_OF_NFTS = 5;
+const NUMBER_OF_NFTS = 10;
 const networkId = chain === "mainnet" ? "mainnet" : "devnet";
 const expectedTxStatus = chain === "zeko" ? "pending" : "included";
 const vk = nftVerificationKeys[networkId].vk;
