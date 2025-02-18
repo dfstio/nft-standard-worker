@@ -26,7 +26,7 @@ import {
   sendTx,
   pinJSON,
 } from "zkcloudworker";
-import { TEST_ACCOUNTS } from "../config.js";
+import { TEST_ACCOUNTS } from "./helpers/config.js";
 import {
   NFT,
   NFTAdmin,
@@ -45,11 +45,11 @@ import {
   TransferParams,
   NFTUpdateBase,
   MetadataValue,
-} from "@minatokens/nft";
+} from "@silvana-one/nft";
 
 import { processArguments } from "./helpers/utils.js";
 import { randomMetadata } from "./helpers/metadata.js";
-import { Storage, UInt64Option, createIpfsURL } from "@minatokens/storage";
+import { Storage, UInt64Option, createIpfsURL } from "@silvana-one/storage";
 
 let { chain, readOnly, noLog } = processArguments();
 const networkId = chain === "mainnet" ? "mainnet" : "devnet";

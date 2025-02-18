@@ -12,11 +12,11 @@ import {
   NFTData,
   fieldToString,
   CollectionData,
-} from "@minatokens/nft";
+} from "@silvana-one/nft";
 import { PublicKey, TokenId, Mina } from "o1js";
 import { fetchMinaAccount, initBlockchain, sleep } from "zkcloudworker";
 import { processArguments } from "./helpers/utils.js";
-import { createIpfsURL } from "@minatokens/storage";
+import { createIpfsURL } from "@silvana-one/storage";
 
 const { chain } = processArguments();
 

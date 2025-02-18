@@ -1,9 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
 import { UInt32, Bool, UInt64, PrivateKey, PublicKey, Field } from "o1js";
-import { NFTData, CollectionData, AdminData } from "@minatokens/nft";
-import { Storage } from "@minatokens/storage";
-import { UpgradeDatabaseState, PublicKeyOption } from "@minatokens/upgradable";
+import { NFTData, CollectionData, AdminData } from "@silvana-one/nft";
+import { Storage } from "@silvana-one/storage";
+import { UpgradeDatabaseState, PublicKeyOption } from "@silvana-one/upgradable";
 
 const NUMBER_OF_ITERATIONS = 1000;
 const randomBool = () => Math.random() < 0.5;

@@ -18,7 +18,7 @@ import {
   Memory,
   sendTx,
 } from "zkcloudworker";
-import { TEST_ACCOUNTS } from "../config.js";
+import { TEST_ACCOUNTS } from "./helpers/config.js";
 import {
   NFT,
   Collection,
@@ -28,8 +28,8 @@ import {
   NFTData,
   MintParams,
   nftVerificationKeys,
-} from "@minatokens/nft";
-import { Storage } from "@minatokens/storage";
+} from "@silvana-one/nft";
+import { Storage } from "@silvana-one/storage";
 import { processArguments } from "./helpers/utils.js";
 import { randomMetadata } from "./helpers/metadata.js";
 

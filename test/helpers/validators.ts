@@ -3,12 +3,12 @@ import {
   ValidatorsList,
   ValidatorsState,
   ValidatorsListData,
-} from "@minatokens/upgradable";
+} from "@silvana-one/upgradable";
 import {
   Storage,
   createIpfsURL,
   deserializeIndexedMerkleMap,
-} from "@minatokens/storage";
+} from "@silvana-one/storage";
 
 /**
 /**

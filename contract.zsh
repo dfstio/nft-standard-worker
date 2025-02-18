@@ -34,6 +34,11 @@ for ADVANCED in true false
         TEST_END=$(date +%s)
         TEST_DURATION=$((TEST_END - TEST_START))
         echo "Test time: ${TEST_DURATION}s"
+        # Add delay for zeko chain
+        if [ "$CHAIN" = "zeko" ]; then
+          echo "Waiting 10 minutes for zeko chain proofs to be processed..."
+          sleep 600
+        fi
         echo
 
   done

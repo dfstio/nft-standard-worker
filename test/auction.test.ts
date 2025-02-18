@@ -24,7 +24,7 @@ import {
   pinJSON,
   sleep,
 } from "zkcloudworker";
-import { TEST_ACCOUNTS } from "../config.js";
+import { TEST_ACCOUNTS } from "./helpers/config.js";
 import {
   NFT,
   NFTAdmin,
@@ -53,7 +53,7 @@ import {
   CollectionFactory,
   NFTStandardUpdate,
   NFTUpdateContractConstructor,
-} from "@minatokens/nft";
+} from "@silvana-one/nft";
 import {
   VerificationKeyUpgradeAuthority,
   ChainId,
@@ -61,10 +61,10 @@ import {
   ValidatorsState,
   ValidatorsListData,
   ValidatorsVoting,
-} from "@minatokens/upgradable";
+} from "@silvana-one/upgradable";
 import { processArguments } from "./helpers/utils.js";
 import { randomMetadata } from "./helpers/metadata.js";
-import { Whitelist, Storage } from "@minatokens/storage";
+import { Whitelist, Storage } from "@silvana-one/storage";
 
 let { chain, useAdvancedAdmin, withdraw, noLog, approveTransfer, shares } =
   processArguments();
