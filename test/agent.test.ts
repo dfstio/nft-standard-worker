@@ -192,19 +192,20 @@ describe("NFT Agent", async () => {
         adminContract: "standard",
         sender: admin.toBase58(),
         nonce: Number(Mina.getAccount(admin).nonce.toBigint()),
-        memo: `NFT collection ${symbol}`.substring(0, 30),
+        memo: `NFT collection ${collectionName}`.substring(0, 30),
         symbol: "NFT",
         collectionAddress: collectionKey.toBase58(),
         adminContractAddress: adminKey.toBase58(),
         masterNFT: mintParams,
       };
       console.log("args nonce:", args.nonce);
-      const { tx, request } = await buildNftCollectionLaunchTransaction({
-        chain,
-        args,
-        provingKey: process.env.WALLET!,
-        provingFee: LAUNCH_FEE,
-      });
+      const { tx, request, storage, metadataRoot } =
+        await buildNftCollectionLaunchTransaction({
+          chain,
+          args,
+          provingKey: process.env.WALLET!,
+          provingFee: LAUNCH_FEE,
+        });
       // if (args.adminContract === "advanced" && "whitelist" in request)
       //   args.whitelist = request.whitelist;
 
@@ -217,6 +218,11 @@ describe("NFT Agent", async () => {
         request: {
           ...(request as any),
           txType: "nft:launch",
+          masterNFT: {
+            ...(request as any).masterNFT,
+            metadata: metadataRoot,
+            storage,
+          },
         },
         ...payloads,
         symbol,
@@ -281,19 +287,20 @@ describe("NFT Agent", async () => {
             description: randomText(),
           },
         };
-        const { tx, request } = await buildNftTransaction({
-          chain,
-          args: {
-            txType: "nft:mint",
-            sender: admin.toBase58(),
-            nonce: nonce++,
-            memo: `mint NFT ${nftName}`,
-            collectionAddress: collectionKey.toBase58(),
-            nftMintParams: mintParams,
-          },
-          provingKey: process.env.WALLET!,
-          provingFee: LAUNCH_FEE,
-        });
+        const { tx, request, storage, metadataRoot } =
+          await buildNftTransaction({
+            chain,
+            args: {
+              txType: "nft:mint",
+              sender: admin.toBase58(),
+              nonce: nonce++,
+              memo: `mint NFT ${nftName}`,
+              collectionAddress: collectionKey.toBase58(),
+              nftMintParams: mintParams,
+            },
+            provingKey: process.env.WALLET!,
+            provingFee: LAUNCH_FEE,
+          });
 
         tx.sign([admin.key, nftKey.key]);
 
@@ -303,6 +310,11 @@ describe("NFT Agent", async () => {
           request: {
             ...(request as NftMintTransactionParams),
             txType: "nft:mint",
+            nftMintParams: {
+              ...mintParams,
+              storage,
+              metadata: metadataRoot,
+            },
           },
           ...payloads,
           symbol,
