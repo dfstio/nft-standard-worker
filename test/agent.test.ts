@@ -385,7 +385,7 @@ async function printBalances() {
           account.balance
             ? "(" + (balanceDiff >= 0 ? "+" : "") + balanceDiff.toString() + ")"
             : ""
-        }, ${tb ? tb / 1_000_000_000 : 0} TEST ${
+        }, ${tb ? tb / 1_000_000_000 : 0} NFT ${
           account.tokenBalance
             ? "(" +
               (tokenBalanceDiff >= 0 ? "+" : "") +

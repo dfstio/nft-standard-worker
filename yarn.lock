@@ -187,18 +187,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@silvana-one/abi@npm:^0.1.3":
-  version: 0.1.3
-  resolution: "@silvana-one/abi@npm:0.1.3"
+"@silvana-one/abi@npm:^0.1.6":
+  version: 0.1.6
+  resolution: "@silvana-one/abi@npm:0.1.6"
   dependencies:
     tslib: "npm:^2.8.1"
   peerDependencies:
-    "@silvana-one/api": 0.1.3
-    "@silvana-one/nft": 0.1.3
-    "@silvana-one/storage": 0.1.3
-    "@silvana-one/token": 0.1.3
+    "@silvana-one/api": 0.1.6
+    "@silvana-one/nft": 0.1.6
+    "@silvana-one/storage": 0.1.6
+    "@silvana-one/token": 0.1.6
     o1js: ^2.2.0
-  checksum: 10c0/d6623c2b4b1f7e6d46ff968799cd4e214fccde6da5f3cebcb58b02265d96c065cff51660e69233c3d2ba1938714db89d35eb2410c43c86c511f6d89256ef81e8
+  checksum: 10c0/b081fb2c713e79932d91fd056434cdd64db1aafd5f87e9712990ddea5b96919a3635730cc047e91f9241d34c375b50aaaa41d32cda008911d9af466a02f2d846
   languageName: node
   linkType: hard
 
@@ -211,64 +211,64 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@silvana-one/api@npm:^0.1.3":
-  version: 0.1.3
-  resolution: "@silvana-one/api@npm:0.1.3"
+"@silvana-one/api@npm:^0.1.6":
+  version: 0.1.6
+  resolution: "@silvana-one/api@npm:0.1.6"
   dependencies:
     "@hey-api/client-fetch": "npm:^0.8.1"
-  checksum: 10c0/aa428d6621a6aff3618aa9f2e7ebf85dfefc16eda6f0c81d0c7ad0ad1af486e9e4a24a1092629334b2166b503837bfbfb9e729d4fa616a0fda59a8ea68cff5a2
+  checksum: 10c0/c5c029c22d747dd2ff9786c38b2d5f576a3f0251133d26bffac36cb670af27268c25b621d0a54e07c51a592f806e32128efb3a26e501869b09969b945424a649
   languageName: node
   linkType: hard
 
-"@silvana-one/nft@npm:^0.1.3":
-  version: 0.1.3
-  resolution: "@silvana-one/nft@npm:0.1.3"
+"@silvana-one/nft@npm:^0.1.6":
+  version: 0.1.6
+  resolution: "@silvana-one/nft@npm:0.1.6"
   dependencies:
     mina-signer: "npm:^3.0.7"
     tslib: "npm:^2.8.1"
   peerDependencies:
-    "@silvana-one/storage": 0.1.3
-    "@silvana-one/token": 0.1.3
-    "@silvana-one/upgradable": 0.1.3
+    "@silvana-one/storage": 0.1.6
+    "@silvana-one/token": 0.1.6
+    "@silvana-one/upgradable": 0.1.6
     o1js: ^2.2.0
-  checksum: 10c0/35937196ff1653506ccd8554faf0ec06e76bd397354326362e164ca27f69f1e693da6c4bb35fe9d3488bce4a08d8816525aa8c597b2f4811e7f4be9dfb9c9c92
+  checksum: 10c0/f95eebe2d6e23dfedec95fcf2d4ea6a120d09863ec1e290858276a2cfd489dcf09a8b4a4db7e7469c4b8f06f4bbe12f24cc123e005f583259081defefcf6bcbd
   languageName: node
   linkType: hard
 
-"@silvana-one/storage@npm:^0.1.3":
-  version: 0.1.3
-  resolution: "@silvana-one/storage@npm:0.1.3"
+"@silvana-one/storage@npm:^0.1.6":
+  version: 0.1.6
+  resolution: "@silvana-one/storage@npm:0.1.6"
   dependencies:
     tslib: "npm:^2.8.1"
   peerDependencies:
     o1js: ^2.2.0
-  checksum: 10c0/fae4821f8f4b83d342582245863630689e9d1551fb6ecc340f10bc98f1d6deca9312b59d299355b86d211eab8a0f025f9bd4437210cb6d14a04616047412a0c5
+  checksum: 10c0/a490a162ae2b3e939a68ad80e39400645299ec475b5d5bbd9935af58e3080866637e4e21ac85056c2515b4552d19761da923d60294d1f51fa7535363c3d168a7
   languageName: node
   linkType: hard
 
-"@silvana-one/token@npm:^0.1.3":
-  version: 0.1.3
-  resolution: "@silvana-one/token@npm:0.1.3"
+"@silvana-one/token@npm:^0.1.6":
+  version: 0.1.6
+  resolution: "@silvana-one/token@npm:0.1.6"
   dependencies:
     tslib: "npm:^2.8.1"
   peerDependencies:
-    "@silvana-one/api": 0.1.3
-    "@silvana-one/storage": 0.1.3
+    "@silvana-one/api": 0.1.6
+    "@silvana-one/storage": 0.1.6
     o1js: ^2.2.0
-  checksum: 10c0/f34a72ad73769a984cf89a80b8a6457b6d440e4e90709fbb16c7792adc081656655fccbf6e70c101806f79407819a95bb00bc793dcc96fbb0ebab2b46c50ba9f
+  checksum: 10c0/c32a1cba8af80dede30f2a125f30623308656ebada8d48c386a81d265a33533429c9898065bf0974ad66e9ddb7207e93e02fd9fad4fc9b6b26dbf67916a3b199
   languageName: node
   linkType: hard
 
-"@silvana-one/upgradable@npm:^0.1.3":
-  version: 0.1.3
-  resolution: "@silvana-one/upgradable@npm:0.1.3"
+"@silvana-one/upgradable@npm:^0.1.6":
+  version: 0.1.6
+  resolution: "@silvana-one/upgradable@npm:0.1.6"
   dependencies:
     mina-signer: "npm:^3.0.7"
     tslib: "npm:^2.8.1"
   peerDependencies:
-    "@silvana-one/storage": 0.1.3
+    "@silvana-one/storage": 0.1.6
     o1js: ^2.2.0
-  checksum: 10c0/7b065b8921a6bae7c8193f61a07e7bd57b9e7aaeee1ae4e684b035aab4125c5cebc748663590df766e9a09bec3e8bbe155a0441c4d33da1f6600e19d5c588225
+  checksum: 10c0/f172538778ce0c3281d9f3fb2920f4c2c5095d0b80b4756f1ff7996ac1048438351cb81889fa91969e24cb04a516c191a46fb2733c3558f810dada43af506a8b
   languageName: node
   linkType: hard
 
@@ -470,12 +470,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "nft-agent@workspace:."
   dependencies:
-    "@silvana-one/abi": "npm:^0.1.3"
-    "@silvana-one/api": "npm:^0.1.3"
-    "@silvana-one/nft": "npm:^0.1.3"
-    "@silvana-one/storage": "npm:^0.1.3"
-    "@silvana-one/token": "npm:^0.1.3"
-    "@silvana-one/upgradable": "npm:^0.1.3"
+    "@silvana-one/abi": "npm:^0.1.6"
+    "@silvana-one/api": "npm:^0.1.6"
+    "@silvana-one/nft": "npm:^0.1.6"
+    "@silvana-one/storage": "npm:^0.1.6"
+    "@silvana-one/token": "npm:^0.1.6"
+    "@silvana-one/upgradable": "npm:^0.1.6"
     "@types/node": "npm:^22.13.4"
     algoliasearch: "npm:^5.20.3"
     dotenv: "npm:^16.4.7"
@@ -483,7 +483,7 @@ __metadata:
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.7.3"
     unique-names-generator: "npm:^4.7.1"
-    zkcloudworker: "npm:^0.25.0"
+    zkcloudworker: "npm:^0.25.4"
   languageName: unknown
   linkType: soft
 
@@ -657,14 +657,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zkcloudworker@npm:^0.25.0":
-  version: 0.25.0
-  resolution: "zkcloudworker@npm:0.25.0"
+"zkcloudworker@npm:^0.25.4":
+  version: 0.25.4
+  resolution: "zkcloudworker@npm:0.25.4"
   dependencies:
     "@silvana-one/api": "npm:^0.1.2"
     chalk: "npm:^4.1.2"
   peerDependencies:
     o1js: ^2.1.0
-  checksum: 10c0/b87f2608ba7069d39f977ece9b5ac6b3e7dd62d213e20116f2e20aa147c31bba68c87e55dabc79b62bc790c137428528909000216cb2dcd2830778b1717f95bc
+  checksum: 10c0/46d265bc6e60f7a2c4d71f8e0dbb0967da01c081ad9feb7cc7f3dda673e7096e73c95f7a1f4271ad7cec6b370e1478c115b5342afc2c618ae6c71c101933ad60
   languageName: node
   linkType: hard
