@@ -3,22 +3,76 @@ const { ALGOLIA_KEY, ALGOLIA_PROJECT } = process.env;
 
 const chain = "devnet";
 
-export async function algoliaWriteNFT(params: {
+export interface NFTDataSerialized {
+  type: "nft" | "collection";
   tokenAddress: string;
+  collectionName: string;
   collectionAddress: string;
-  info: object;
-}): Promise<boolean> {
-  const { tokenAddress, collectionAddress, info } = params;
+  symbol: string;
+  uri: string;
+  tokenId: string;
+  adminAddress: string;
+  name: string;
+  image: string;
+  description?: string;
+  metadataRoot: string;
+  storage: string;
+  metadataVerificationKeyHash: string;
+  owner: string;
+  approved?: string;
+  version: number;
+  id: string;
+  canChangeOwnerByProof: boolean;
+  canTransfer: boolean;
+  canApprove: boolean;
+  canChangeMetadata: boolean;
+  canChangeStorage: boolean;
+  canChangeName: boolean;
+  canChangeMetadataVerificationKeyHash: boolean;
+  canPause: boolean;
+  isPaused: boolean;
+  requireOwnerAuthorizationToUpgrade: boolean;
+  metadata: object;
+  status: string;
+  rating: number;
+  updated: number;
+  created: number;
+  chain: string;
+  price?: number;
+  likes?: number;
+  like?: boolean;
+}
+
+export interface CollectionDataSerialized extends NFTDataSerialized {
+  type: "collection";
+  banner?: string;
+  creator: string;
+  adminAddress: string;
+  baseURL: string;
+  royaltyFee: number;
+  transferFee: string;
+  requireTransferApproval: boolean;
+  mintingIsLimited: boolean;
+  collectionIsPaused: boolean;
+}
+
+export async function algoliaWriteNFT(
+  info: NFTDataSerialized | CollectionDataSerialized
+): Promise<boolean> {
   if (ALGOLIA_KEY === undefined) throw new Error("ALGOLIA_KEY is undefined");
   if (ALGOLIA_PROJECT === undefined)
     throw new Error("ALGOLIA_PROJECT is undefined");
   try {
     const client = algoliasearch(ALGOLIA_PROJECT, ALGOLIA_KEY);
     const indexName = `standard-${chain}`;
-    console.log("algoliaWriteToken", params, indexName);
+    const objectID =
+      info.collectionAddress +
+      (info.type === "nft" ? "." + info.tokenAddress : "");
+    //console.log("objectID", objectID);
+    console.log("NFT", info.name, indexName, objectID);
 
     const data = {
-      objectID: collectionAddress + "." + tokenAddress,
+      objectID,
       ...info,
     };
 
@@ -33,7 +87,7 @@ export async function algoliaWriteNFT(params: {
 
     return true;
   } catch (error) {
-    console.error("algoliaWriteToken error:", { error, params });
+    console.error("algoliaWriteNFT error:", { error, info });
     return false;
   }
 }

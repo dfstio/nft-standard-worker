@@ -25,7 +25,7 @@ import {
   sendTx,
   pinJSON,
 } from "zkcloudworker";
-import { TEST_ACCOUNTS } from "../config.js";
+import { TEST_ACCOUNTS } from "./helpers/config.js";
 import {
   NFT,
   NFTAdmin,
@@ -52,7 +52,7 @@ import {
   NFTAdminContractConstructor,
   TransferParams,
   NFTTransactionContext,
-} from "@minatokens/nft";
+} from "@silvana-one/nft";
 import {
   VerificationKeyUpgradeAuthority,
   ChainId,
@@ -69,11 +69,11 @@ import {
   ValidatorsVotingProof,
   VerificationKeyUpgradeData,
   PublicKeyOption,
-} from "@minatokens/upgradable";
+} from "@silvana-one/upgradable";
 import { processArguments } from "./helpers/utils.js";
 import { checkValidatorsList } from "./helpers/validators.js";
 import { randomMetadata } from "./helpers/metadata.js";
-import { Whitelist, Storage, OffChainList } from "@minatokens/storage";
+import { Whitelist, Storage, OffChainList } from "@silvana-one/storage";
 
 let { chain, useAdvancedAdmin, approveTransfer, noLog } = processArguments();
 const networkId = chain === "mainnet" ? "mainnet" : "devnet";

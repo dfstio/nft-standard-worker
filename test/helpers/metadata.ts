@@ -1,11 +1,11 @@
-import { Field } from "o1js";
+import { Field, UInt64, PrivateKey, PublicKey } from "o1js";
 import {
   Metadata,
   MetadataTree,
   Text,
   MetadataFieldType,
   MetadataFieldTypeValues,
-} from "@minatokens/nft";
+} from "@silvana-one/nft";
 import {
   uniqueNamesGenerator,
   names,
@@ -28,6 +28,8 @@ export {
   randomBanner,
   randomURL,
   randomField,
+  randomNumber,
+  randomAddress,
   randomTree,
   randomMap,
 };
@@ -78,7 +80,7 @@ async function randomMetadata(
   };
 }
 
-function randomName() {
+function randomName(): string {
   let counter = 0;
   while (true) {
     const name = uniqueNamesGenerator({
@@ -91,7 +93,7 @@ function randomName() {
   }
 }
 
-function randomText() {
+function randomText(): string {
   const length = Math.floor(Math.random() * 20) + 1;
   const words = Array.from({ length }, () =>
     uniqueNamesGenerator({
@@ -110,24 +112,44 @@ function randomText() {
   return text;
 }
 
-function randomImage() {
+function randomImage(): string {
   return `https://picsum.photos/seed/${Math.floor(
     Math.random() * 10000000
   )}/540/670`;
 }
 
-function randomBanner() {
+function randomBanner(): string {
   return `https://picsum.photos/seed/${Math.floor(
     Math.random() * 10000000
   )}/1920/300`;
 }
 
-function randomURL() {
+function randomURL(): string {
   return `https://example.com/${randomName()}`;
 }
 
-function randomField() {
+function randomField(): Field {
   return Field.random();
+}
+
+function randomNumber(): UInt64 {
+  const max = UInt64.MAXINT().toBigInt();
+  const randomBytes = new Uint8Array(8);
+  crypto.getRandomValues(randomBytes);
+  const randomBigInt = BigInt(
+    "0x" +
+      Array.from(randomBytes)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("")
+  );
+  if (randomBigInt > max) {
+    throw new Error("Random number is greater than max");
+  }
+  return UInt64.from(randomBigInt);
+}
+
+function randomAddress(): PublicKey {
+  return PrivateKey.random().toPublicKey();
 }
 
 function randomTree() {
@@ -156,7 +178,14 @@ function randomMap(
     const type = Object.keys(MetadataFieldTypeValues)[
       Math.floor(Math.random() * Object.keys(MetadataFieldTypeValues).length)
     ] as MetadataFieldType;
-    let value: string | Text | Field | Metadata | MetadataTree;
+    let value:
+      | string
+      | Text
+      | Field
+      | Metadata
+      | MetadataTree
+      | UInt64
+      | PublicKey;
     switch (type) {
       case "string":
         value = randomName();
@@ -172,6 +201,12 @@ function randomMap(
         break;
       case "field":
         value = randomField();
+        break;
+      case "number":
+        value = randomNumber();
+        break;
+      case "address":
+        value = randomAddress();
         break;
       case "map":
         value = randomMap();
