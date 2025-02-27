@@ -34,6 +34,10 @@ import {
   NftMintParams,
   NftData,
   NftMintTransactionParams,
+  NftTransferTransactionParams,
+  NftBuyTransactionParams,
+  NftSellTransactionParams,
+  NftApproveTransactionParams,
 } from "@silvana-one/api";
 import {
   NFT,
@@ -44,6 +48,7 @@ import {
 } from "@silvana-one/nft";
 import {
   buildNftCollectionLaunchTransaction,
+  buildNftMintTransaction,
   buildNftTransaction,
   LAUNCH_FEE,
   TRANSACTION_FEE,
@@ -93,6 +98,9 @@ const tokenId = TokenId.derive(collectionKey);
 describe("NFT Agent", async () => {
   const symbol = "NFT";
   const name = "StandardCollection";
+  const nftAddresses: PublicKey[] = [];
+  const nftOwners: PublicKey[] = [];
+  const nftNames: string[] = [];
   let keys: TestPublicKey[];
   let admin: TestPublicKey;
   let user1: TestPublicKey;
@@ -150,6 +158,40 @@ describe("NFT Agent", async () => {
       );
       topupTx.sign([topup.key]);
       await sendTx({ tx: topupTx, description: "topup" });
+    }
+
+    if (!Mina.hasAccount(user1)) {
+      const topupTx = await Mina.transaction(
+        {
+          sender: topup,
+          fee: await fee(),
+          memo: "topup user1",
+        },
+        async () => {
+          const senderUpdate = AccountUpdate.createSigned(topup);
+          senderUpdate.balance.subInPlace(1000000000);
+          senderUpdate.send({ to: user1, amount: 10_000_000_000 });
+        }
+      );
+      topupTx.sign([topup.key]);
+      await sendTx({ tx: topupTx, description: "topup user1" });
+    }
+
+    if (!Mina.hasAccount(user2)) {
+      const topupTx = await Mina.transaction(
+        {
+          sender: topup,
+          fee: await fee(),
+          memo: "topup user2",
+        },
+        async () => {
+          const senderUpdate = AccountUpdate.createSigned(topup);
+          senderUpdate.balance.subInPlace(1000000000);
+          senderUpdate.send({ to: user2, amount: 10_000_000_000 });
+        }
+      );
+      topupTx.sign([topup.key]);
+      await sendTx({ tx: topupTx, description: "topup user2" });
     }
 
     console.log("collection:", collectionKey.toBase58());
@@ -215,6 +257,8 @@ describe("NFT Agent", async () => {
       if (request.adminContract !== adminType)
         throw new Error("Admin type mismatch");
       const txPayload: NftTransaction = {
+        collectionName,
+        nftName: collectionName,
         request: {
           ...(request as any),
           txType: "nft:launch",
@@ -266,17 +310,21 @@ describe("NFT Agent", async () => {
       console.time("minted");
       await fetchMinaAccount({ publicKey: admin, force: true });
       let nonce = Number(Mina.getAccount(admin).nonce.toBigint());
-      const ownerArray: TestPublicKey[] = [user1, user1];
+      const ownerArray: TestPublicKey[] = [user1, user2];
       const hashArray: string[] = [];
 
       for (const owner of ownerArray) {
         const nftKey = TestPublicKey.random();
+        nftAddresses.push(nftKey);
+        nftOwners.push(owner);
+
         console.log("nft:", nftKey.toBase58());
         console.log("owner:", owner.toBase58());
         const nftData: NftData = {
           owner: owner.toBase58(),
         };
         const nftName = randomName();
+        nftNames.push(nftName);
         const mintParams: NftMintParams = {
           name: nftName,
           address: nftKey.toBase58(),
@@ -288,7 +336,7 @@ describe("NFT Agent", async () => {
           },
         };
         const { tx, request, storage, metadataRoot } =
-          await buildNftTransaction({
+          await buildNftMintTransaction({
             chain,
             args: {
               txType: "nft:mint",
@@ -318,7 +366,7 @@ describe("NFT Agent", async () => {
           },
           ...payloads,
           symbol,
-        });
+        } as NftTransaction);
         console.log("mint jobId:", jobId);
         assert(jobId !== undefined, "Mint jobId is undefined");
         await api.waitForJobResults({ jobId, printLogs: true });
@@ -353,6 +401,91 @@ describe("NFT Agent", async () => {
       });
       const tb = await tokenBalance(adminKey, TokenId.derive(adminKey));
       console.log("admin token balance", (tb ?? 0) / 1_000_000_000);
+    });
+  }
+
+  if (transfer) {
+    it(`should transfer NFT`, async () => {
+      console.time("transferred");
+      await fetchMinaAccount({ publicKey: admin, force: true });
+
+      const ownerArray: TestPublicKey[] = [user1, user2];
+      const toArray: TestPublicKey[] = [user3, user4];
+      const hashArray: string[] = [];
+
+      for (let i = 0; i < nftAddresses.length; i++) {
+        const nftAddress = nftAddresses[i];
+        const nftName = nftNames[i];
+        const owner = nftOwners[i];
+        const to = toArray[i];
+        const ownerKey = ownerArray[i];
+        assert(ownerKey.toBase58() === owner.toBase58(), "Owner mismatch");
+        console.log("nft:", nftAddress.toBase58());
+        console.log("owner:", owner.toBase58());
+        console.log("to:", to.toBase58());
+        const nonce = Number(Mina.getAccount(owner).nonce.toBigint());
+        const { tx, request, storage, metadataRoot } =
+          await buildNftTransaction({
+            chain,
+            args: {
+              txType: "nft:transfer",
+              nftAddress: nftAddress.toBase58(),
+              sender: owner.toBase58(),
+              nonce,
+              memo: `transfer NFT ${nftName}`,
+              collectionAddress: collectionKey.toBase58(),
+              nftTransferParams: {
+                to: to.toBase58(),
+                from: owner.toBase58(),
+              },
+            },
+            provingKey: process.env.WALLET!,
+            provingFee: TRANSACTION_FEE,
+          });
+
+        tx.sign([ownerKey.key]);
+
+        const payloads = createTransactionPayloads(tx);
+
+        const jobId = await api.proveTransaction({
+          request: {
+            ...(request as NftTransferTransactionParams),
+            txType: "nft:transfer",
+            nftTransferParams: {
+              from: owner.toBase58(),
+              to: to.toBase58(),
+            },
+          },
+          ...payloads,
+          symbol,
+        } as NftTransaction);
+        console.log("transfer jobId:", jobId);
+        assert(jobId !== undefined, "Transfer jobId is undefined");
+        await api.waitForJobResults({ jobId, printLogs: true });
+        const proofs = await api.getResults(jobId);
+        if (
+          !("results" in proofs) ||
+          !proofs.results ||
+          proofs.results.length === 0
+        )
+          throw new Error("Results not found");
+        const hash = proofs.results[0].hash;
+        assert(hash !== undefined, "Transfer hash is undefined");
+        console.log("transfer hash:", hash);
+        hashArray.push(hash);
+      }
+
+      for (const hash of hashArray) {
+        console.log("Waiting for transfer tx to be included...", hash);
+        while (!(await getTxStatusFast({ hash })).result === true) {
+          await sleep(10000);
+        }
+        console.log("transfer tx included", hash);
+      }
+      Memory.info("transferred");
+      console.timeEnd("transferred");
+      if (chain !== "local") await sleep(DELAY);
+      await printBalances();
     });
   }
 });
