@@ -13,6 +13,11 @@ import {
   LaunchNftCollectionAdvancedAdminParams,
   NftTransactionType,
   JobResult,
+  NftTransferTransactionParams,
+  NftBuyTransactionParams,
+  NftSellTransactionParams,
+  NftMintTransactionParams,
+  NftApproveTransactionParams,
 } from "@silvana-one/api";
 import {
   NFT,
@@ -30,6 +35,7 @@ import {
   TRANSACTION_FEE,
   AdminType,
   NftAdminType,
+  buildNftMintTransaction,
 } from "@silvana-one/abi";
 import {
   VerificationKey,
@@ -116,6 +122,7 @@ export class NFTAgent extends zkCloudWorker {
 
           case "admin":
           case "user":
+          case "nft":
             if (item.type === "admin" && !compileAdmin) break;
             const contract = contractList[key];
             if (!contract) throw new Error(`Contract ${key} not found`);
@@ -172,6 +179,10 @@ export class NFTAgent extends zkCloudWorker {
           break;
 
         case "nft:mint":
+        case "nft:sell":
+        case "nft:buy":
+        case "nft:transfer":
+        case "nft:approve":
           proofs.push(await this.transaction(tx));
           break;
 
@@ -217,6 +228,7 @@ export class NFTAgent extends zkCloudWorker {
       throw new Error("One or more required args are undefined");
     }
     const sendTransaction = args.sendTransaction ?? true;
+
     if (WALLET === undefined) throw new Error("WALLET is undefined");
 
     // const contractAddress = PublicKey.fromBase58(args.tokenAddress);
@@ -294,6 +306,7 @@ export class NFTAgent extends zkCloudWorker {
           tx: txJSON,
         });
       }
+
       return await this.sendTransaction({
         tx: txProved,
         txJSON,
@@ -350,17 +363,33 @@ export class NFTAgent extends zkCloudWorker {
       adminContractAddress,
       verificationKeyHashes,
       symbol,
-      name,
-    } = await buildNftTransaction({
-      chain: this.cloud.chain,
-      args: args.request as Exclude<
-        NftTransactionParams,
-        | LaunchNftCollectionStandardAdminParams
-        | LaunchNftCollectionAdvancedAdminParams
-      >,
-      provingKey: WALLET,
-      provingFee: txType === "nft:mint" ? LAUNCH_FEE : TRANSACTION_FEE,
-    });
+      collectionName,
+    } = txType === "nft:mint"
+      ? await buildNftMintTransaction({
+          chain: this.cloud.chain,
+          args: args.request as Exclude<
+            NftTransactionParams,
+            | LaunchNftCollectionStandardAdminParams
+            | LaunchNftCollectionAdvancedAdminParams
+            | NftSellTransactionParams
+            | NftBuyTransactionParams
+            | NftTransferTransactionParams
+            | NftApproveTransactionParams
+          >,
+          provingKey: WALLET,
+          provingFee: LAUNCH_FEE,
+        })
+      : await buildNftTransaction({
+          chain: this.cloud.chain,
+          args: args.request as Exclude<
+            NftTransactionParams,
+            | LaunchNftCollectionStandardAdminParams
+            | LaunchNftCollectionAdvancedAdminParams
+            | NftMintTransactionParams
+          >,
+          provingKey: WALLET,
+          provingFee: TRANSACTION_FEE,
+        });
 
     const tx = parseTransactionPayloads({ payloads: args, txNew });
     if (tx === undefined) throw new Error("tx is undefined");
@@ -408,12 +437,13 @@ export class NFTAgent extends zkCloudWorker {
         memo,
         metadata: {
           type: txType,
-          sender: sender.toBase58(),
+          collectionName,
+
           collectionAddress: args.request.collectionAddress,
+          sender: sender.toBase58(),
           adminType,
           adminContractAddress: adminContractAddress.toBase58(),
           symbol,
-          name,
         } as any,
       });
     } catch (error) {

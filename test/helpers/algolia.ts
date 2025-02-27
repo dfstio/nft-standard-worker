@@ -81,7 +81,7 @@ export async function algoliaWriteNFT(
       body: data,
     });
     if (result.taskID === undefined) {
-      console.error("algoliaWriteToken: Algolia write result is", result);
+      console.error("algoliaWriteNFT: Algolia write result is", result);
       return false;
     }
 
