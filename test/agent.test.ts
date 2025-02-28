@@ -73,8 +73,16 @@ setNumberOfWorkers(8);
 
 const args = processArguments();
 console.log("args:", args);
-const { chain, useLocalCloudWorker, deploy, mint, transfer, useAdvancedAdmin } =
-  args;
+const {
+  chain,
+  useLocalCloudWorker,
+  deploy,
+  mint,
+  transfer,
+  sell,
+  buy,
+  useAdvancedAdmin,
+} = args;
 
 const DELAY = chain === "local" ? 1000 : chain === "zeko" ? 3000 : 10000;
 
@@ -99,6 +107,7 @@ describe("NFT Agent", async () => {
   const symbol = "NFT";
   const name = "StandardCollection";
   const nftAddresses: PublicKey[] = [];
+  const offerAddresses: PublicKey[] = [];
   const nftOwners: PublicKey[] = [];
   const nftNames: string[] = [];
   let keys: TestPublicKey[];
@@ -159,7 +168,7 @@ describe("NFT Agent", async () => {
       topupTx.sign([topup.key]);
       await sendTx({ tx: topupTx, description: "topup" });
     }
-
+    await fetchMinaAccount({ publicKey: user1, force: false });
     if (!Mina.hasAccount(user1)) {
       const topupTx = await Mina.transaction(
         {
@@ -176,7 +185,7 @@ describe("NFT Agent", async () => {
       topupTx.sign([topup.key]);
       await sendTx({ tx: topupTx, description: "topup user1" });
     }
-
+    await fetchMinaAccount({ publicKey: user2, force: false });
     if (!Mina.hasAccount(user2)) {
       const topupTx = await Mina.transaction(
         {
@@ -484,6 +493,167 @@ describe("NFT Agent", async () => {
       }
       Memory.info("transferred");
       console.timeEnd("transferred");
+      if (chain !== "local") await sleep(DELAY);
+      await printBalances();
+    });
+  }
+
+  if (sell) {
+    it(`should sell NFT`, async () => {
+      console.time("sold");
+      await fetchMinaAccount({ publicKey: admin, force: true });
+
+      const ownerArray: TestPublicKey[] = [user3, user4];
+      const hashArray: string[] = [];
+
+      for (let i = 0; i < nftAddresses.length; i++) {
+        const nftAddress = nftAddresses[i];
+        const nftName = nftNames[i];
+        const owner = ownerArray[i];
+        const offerAddress = TestPublicKey.random();
+        offerAddresses.push(offerAddress);
+        console.log("nft:", nftAddress.toBase58());
+        console.log("offer:", offerAddress.toBase58());
+        const nonce = Number(Mina.getAccount(owner).nonce.toBigint());
+        const { tx, request, storage, metadataRoot } =
+          await buildNftTransaction({
+            chain,
+            args: {
+              txType: "nft:sell",
+              nftAddress: nftAddress.toBase58(),
+              sender: owner.toBase58(),
+              nonce,
+              memo: `sell NFT ${nftName}`,
+              collectionAddress: collectionKey.toBase58(),
+              nftSellParams: {
+                price: 25,
+                offerAddress: offerAddress.toBase58(),
+              },
+            },
+            provingKey: process.env.WALLET!,
+            provingFee: TRANSACTION_FEE,
+          });
+
+        tx.sign([owner.key, offerAddress.key]);
+
+        const payloads = createTransactionPayloads(tx);
+
+        const jobId = await api.proveTransaction({
+          request: {
+            ...(request as NftSellTransactionParams),
+            txType: "nft:sell",
+            nftSellParams: {
+              price: 25,
+              offerAddress: offerAddress.toBase58(),
+            },
+          },
+          ...payloads,
+          symbol,
+        } as NftTransaction);
+        console.log("sell jobId:", jobId);
+        assert(jobId !== undefined, "Sell jobId is undefined");
+        await api.waitForJobResults({ jobId, printLogs: true });
+        const proofs = await api.getResults(jobId);
+        if (
+          !("results" in proofs) ||
+          !proofs.results ||
+          proofs.results.length === 0
+        )
+          throw new Error("Results not found");
+        const hash = proofs.results[0].hash;
+        assert(hash !== undefined, "Sell hash is undefined");
+        console.log("sell hash:", hash);
+        hashArray.push(hash);
+      }
+
+      for (const hash of hashArray) {
+        console.log("Waiting for sell tx to be included...", hash);
+        while (!(await getTxStatusFast({ hash })).result === true) {
+          await sleep(10000);
+        }
+        console.log("sell tx included", hash);
+      }
+      Memory.info("sold");
+      console.timeEnd("sold");
+      if (chain !== "local") await sleep(DELAY);
+      await printBalances();
+    });
+  }
+  if (buy) {
+    it(`should buy NFT`, async () => {
+      console.time("bought");
+      await fetchMinaAccount({ publicKey: admin, force: true });
+
+      const buyerArray: TestPublicKey[] = [user1, user2];
+      const hashArray: string[] = [];
+
+      for (let i = 0; i < nftAddresses.length; i++) {
+        const nftAddress = nftAddresses[i];
+        const nftName = nftNames[i];
+        const buyer = buyerArray[i];
+        const offerAddress = offerAddresses[i];
+        console.log("nft:", nftAddress.toBase58());
+        console.log("buyer:", buyer.toBase58());
+        console.log("offer:", offerAddress.toBase58());
+        const nonce = Number(Mina.getAccount(buyer).nonce.toBigint());
+        const { tx, request, storage, metadataRoot } =
+          await buildNftTransaction({
+            chain,
+            args: {
+              txType: "nft:buy",
+              nftAddress: nftAddress.toBase58(),
+              sender: buyer.toBase58(),
+              nonce,
+              memo: `buy NFT ${nftName}`,
+              collectionAddress: collectionKey.toBase58(),
+              nftBuyParams: {
+                buyer: buyer.toBase58(),
+              },
+            },
+            provingKey: process.env.WALLET!,
+            provingFee: TRANSACTION_FEE,
+          });
+
+        tx.sign([buyer.key]);
+
+        const payloads = createTransactionPayloads(tx);
+
+        const jobId = await api.proveTransaction({
+          request: {
+            ...(request as NftBuyTransactionParams),
+            txType: "nft:buy",
+            nftBuyParams: {
+              buyer: buyer.toBase58(),
+            },
+          },
+          ...payloads,
+          symbol,
+        } as NftTransaction);
+        console.log("buy jobId:", jobId);
+        assert(jobId !== undefined, "Buy jobId is undefined");
+        await api.waitForJobResults({ jobId, printLogs: true });
+        const proofs = await api.getResults(jobId);
+        if (
+          !("results" in proofs) ||
+          !proofs.results ||
+          proofs.results.length === 0
+        )
+          throw new Error("Results not found");
+        const hash = proofs.results[0].hash;
+        assert(hash !== undefined, "Buy hash is undefined");
+        console.log("buy hash:", hash);
+        hashArray.push(hash);
+      }
+
+      for (const hash of hashArray) {
+        console.log("Waiting for buy tx to be included...", hash);
+        while (!(await getTxStatusFast({ hash })).result === true) {
+          await sleep(10000);
+        }
+        console.log("buy tx included", hash);
+      }
+      Memory.info("bought");
+      console.timeEnd("bought");
       if (chain !== "local") await sleep(DELAY);
       await printBalances();
     });
