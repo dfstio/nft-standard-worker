@@ -12,6 +12,8 @@ export function processArguments(): {
   deploy: boolean;
   mint: boolean;
   transfer: boolean;
+  sell: boolean;
+  buy: boolean;
 } {
   const chainName = process.env.CHAIN ?? "local";
   const useAdvancedAdmin = process.env.ADVANCED ?? "false";
@@ -24,6 +26,8 @@ export function processArguments(): {
   const deploy = process.env.DEPLOY === "true";
   const mint = process.env.MINT === "true";
   const transfer = process.env.TRANSFER === "true";
+  const sell = process.env.SELL === "true";
+  const buy = process.env.BUY === "true";
   if (
     chainName !== "local" &&
     chainName !== "devnet" &&
@@ -44,5 +48,7 @@ export function processArguments(): {
     deploy,
     mint,
     transfer,
+    sell,
+    buy,
   };
 }

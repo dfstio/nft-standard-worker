@@ -798,7 +798,7 @@ describe(`NFT contracts tests: ${chain} ${useAdvancedAdmin ? "advanced " : ""}${
         memo: `Buy NFT ${name}`.substring(0, 30),
       },
       async () => {
-        await offerContract.buy();
+        await offerContract.buy(buyer);
       }
     );
     await tx.prove();

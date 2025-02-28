@@ -1,13 +1,13 @@
 {
   "name": "nft-agent",
-  "version": "0.1.14",
+  "version": "0.1.17",
   "author": "DFST",
   "type": "module",
   "license": "Apache-2.0",
   "scripts": {
     "test": "NODE_NO_WARNINGS=1 node --loader=ts-node/esm --enable-source-maps -r dotenv/config --require dotenv/config --env-file=.env --test",
-    "local:agent": "CHAIN=local CLOUD=local DEPLOY=true MINT=true TRANSFER=true yarn test test/agent.test.ts",
-    "devnet:agent": "CHAIN=devnet DEPLOY=true MINT=true TRANSFER=true yarn test test/agent.test.ts",
+    "local:agent": "CHAIN=local CLOUD=local DEPLOY=true MINT=true TRANSFER=true SELL=true BUY=true yarn test test/agent.test.ts",
+    "devnet:agent": "CHAIN=devnet DEPLOY=true MINT=true TRANSFER=true SELL=true BUY=true yarn test test/agent.test.ts",
     "local:contract": "CHAIN=local CLOUD=local ADVANCED=false yarn test test/contract.test.ts",
     "devnet:contract": "CHAIN=devnet CLOUD=local ADVANCED=false yarn test test/contract.test.ts",
     "lightnet:contract": "CHAIN=lightnet CLOUD=local ADVANCED=false yarn test test/contract.test.ts",
@@ -55,15 +55,15 @@
   },
   "packageManager": "yarn@4.6.0",
   "dependencies": {
-    "@silvana-one/abi": "^0.1.20",
-    "@silvana-one/api": "^0.1.20",
-    "@silvana-one/nft": "^0.1.20",
-    "@silvana-one/storage": "^0.1.20",
-    "@silvana-one/token": "^0.1.20",
-    "@silvana-one/upgradable": "^0.1.20",
+    "@silvana-one/abi": "^0.1.31",
+    "@silvana-one/api": "^0.1.31",
+    "@silvana-one/nft": "^0.1.31",
+    "@silvana-one/storage": "^0.1.31",
+    "@silvana-one/token": "^0.1.31",
+    "@silvana-one/upgradable": "^0.1.31",
     "algoliasearch": "^5.20.3",
     "o1js": "2.2.0",
     "unique-names-generator": "^4.7.1",
-    "zkcloudworker": "^0.25.6"
+    "zkcloudworker": "^0.25.10"
   }
 }
